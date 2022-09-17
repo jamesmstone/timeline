@@ -9,7 +9,7 @@
   "scripts": {
     "start": "parcel src/index.html",
     "build": "parcel build src/index.html",
-    "prettier": "prettier --write \"src/**/*.{tsx,ts,js,css,json,md,less}\""
+    "prettier": "prettier --write \"src/**/*.{tsx,ts,js,css,json,md,less,html}\""
   },
   "devDependencies": {
     "parcel": "^2.7.0",
