@@ -1,4 +1,6 @@
 .idea
+.parcel-cache
+.vercel
 # Logs
 logs
 *.log

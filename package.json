@@ -1,0 +1,21 @@
+{
+  "name": "timeline",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:jamesmstone/timeline",
+  "author": "James Stone <jamesmstone@users.noreply.github.com>",
+  "license": "None",
+  "private": true,
+  "scripts": {
+    "start": "parcel src/index.html",
+    "build": "parcel build src/index.html",
+    "prettier": "prettier --write \"src/**/*.{tsx,ts,js,css,json,md,less}\""
+  },
+  "devDependencies": {
+    "parcel": "^2.7.0",
+    "prettier": "^2.7.1"
+  },
+  "dependencies": {
+    "vis-timeline": "^7.7.0"
+  }
+}
