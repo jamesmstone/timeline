@@ -1,7 +1,6 @@
 {
   "name": "timeline",
   "version": "1.0.0",
-  "main": "index.js",
   "repository": "git@github.com:jamesmstone/timeline",
   "author": "James Stone <jamesmstone@users.noreply.github.com>",
   "license": "None",
@@ -16,6 +15,11 @@
     "prettier": "^2.7.1"
   },
   "dependencies": {
+    "@vercel/node": "^2.5.14",
+    "moment": "^2.29.4",
+    "p-limit": "^4.0.0",
+    "p-memoize": "^7.1.0",
+    "vis-data": "^7.1.4",
     "vis-timeline": "^7.7.0"
   }
 }
