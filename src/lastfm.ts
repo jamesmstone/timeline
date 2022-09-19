@@ -2,7 +2,7 @@ import { errorDataItem, Loader } from "./main";
 import { chunkRange, expandToMonth, Interval, overAWeek, Range } from "./range";
 import { DataItem } from "vis-timeline";
 import * as moment from "moment";
-import { datasetteFetch } from "./datasette";
+import { addTTL, datasetteFetch } from "./datasette";
 
 type listenDetail = {
   "url:1": string;
@@ -31,6 +31,8 @@ type listenDetail = {
   "mbid:2": string;
 };
 
+type listenSummary = { day: string; count: number };
+
 const interval: Interval = "month";
 
 const loadLastfmSummary = async (dateRange: Range) => {
@@ -40,7 +42,10 @@ const loadLastfmSummary = async (dateRange: Range) => {
     ranges.map(
       async ({ start, end }): Promise<listenDetail[]> =>
         await datasetteFetch(
-          `https://lastfm.jamesst.one/music/listen_details.json?_json=image&_json=image:1&date_uts__lt=${end.unix()}&_sort_desc=date_uts&date_uts__gte=${start.unix()}&_shape=array`
+          addTTL(
+            `https://lastfm.jamesst.one/music/listen_details.json?_json=image&_json=image:1&date_uts__lt=${end.unix()}&_sort_desc=date_uts&date_uts__gte=${start.unix()}&_shape=array`,
+            dateRange
+          )
         )
     )
   );
@@ -71,7 +76,6 @@ const loadLastfmSummary = async (dateRange: Range) => {
     });
   });
 };
-type listenSummary = { day: string; count: number };
 const loadLastfmDay = async (dateRange: Range) => {
   const loadDateRange = expandToMonth(dateRange);
   const ranges = chunkRange(loadDateRange, interval);
@@ -93,7 +97,7 @@ group by
 order by
   1 desc
 `;
-        return await datasetteFetch(encodeURI(url));
+        return await datasetteFetch(addTTL(encodeURI(url), dateRange));
       })
     );
   return data.flatMap((d, i): DataItem[] => {

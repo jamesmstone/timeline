@@ -1,4 +1,6 @@
 import { fetcher } from "./fetcher";
+import { Range } from "./range";
+import * as moment from "moment";
 
 const parseLinkHeader = (link: string): Record<string, string> => {
   const linkexp =
@@ -22,6 +24,17 @@ const parseLinkHeader = (link: string): Record<string, string> => {
   }
   return rels;
 };
+
+const aMin = 60;
+const aWeek = 7 * 24 * 60 * aMin;
+export const addTTL = (url: string, { end }: Range): string => {
+  const providedURL = new URL(url);
+  const isOlderThenAWeek = end.isBefore(moment().subtract(1, "week"));
+  const ttl = isOlderThenAWeek ? aMin : aWeek;
+  providedURL.searchParams.set("_ttl", ttl.toString());
+  return providedURL.toString();
+};
+
 export const datasetteFetch = async (url: string) => {
   let json = [];
   while (url !== undefined) {
