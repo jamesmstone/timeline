@@ -5,11 +5,6 @@
   "author": "James Stone <jamesmstone@users.noreply.github.com>",
   "license": "None",
   "private": true,
-  "scripts": {
-    "start": "parcel src/index.html",
-    "build": "parcel build src/index.html",
-    "prettier": "prettier --write \"src/**/*.{tsx,ts,js,css,json,md,less,html}\""
-  },
   "devDependencies": {
     "parcel": "^2.7.0",
     "prettier": "^2.7.1"
@@ -21,5 +16,10 @@
     "p-memoize": "^7.1.0",
     "vis-data": "^7.1.4",
     "vis-timeline": "^7.7.0"
+  },
+  "scripts": {
+    "start": "parcel src/index.html",
+    "build": "parcel build src/index.html",
+    "prettier": "prettier --write \"src/**/*.{tsx,ts,js,css,json,md,less,html}\""
   }
 }
