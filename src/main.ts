@@ -51,8 +51,12 @@ const updateTimelineForDateRange = async (dateRange: Range): Promise<void> => {
 const container = document.getElementById("visualization");
 
 const items: DataSetDataItem = new DataSet<DataItem>();
+const end = moment().endOf("day");
+const start = end.clone().subtract(5, "day").startOf("day");
 const options: TimelineOptions = {
   stack: false,
+  start: start.date(),
+  end: end.date(),
 };
 const timeline = new Timeline(container, items, options);
 
