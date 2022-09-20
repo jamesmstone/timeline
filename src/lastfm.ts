@@ -1,5 +1,15 @@
 import { errorDataItem, Loader } from "./main";
-import { chunkRange, expandToMonth, Interval, overAWeek, Range } from "./range";
+import {
+  chunkRange,
+  diff,
+  expandToMonth,
+  expandToYear,
+  Interval,
+  overAWeek,
+  overDays,
+  overWeeks,
+  Range,
+} from "./range";
 import { DataItem } from "vis-timeline";
 import * as moment from "moment";
 import { addTTL, datasetteFetch } from "./datasette";
@@ -35,7 +45,7 @@ type listenSummary = { day: string; count: number };
 
 const interval: Interval = "month";
 
-const loadLastfmSummary = async (dateRange: Range) => {
+const loadLastfmDay = async (dateRange: Range) => {
   const loadDateRange = expandToMonth(dateRange);
   const ranges = chunkRange(loadDateRange, interval);
   const data: PromiseSettledResult<listenDetail[]>[] = await Promise.allSettled(
@@ -76,7 +86,7 @@ const loadLastfmSummary = async (dateRange: Range) => {
     });
   });
 };
-const loadLastfmDay = async (dateRange: Range) => {
+const loadLastfmDaySummary = async (dateRange: Range) => {
   const loadDateRange = expandToMonth(dateRange);
   const ranges = chunkRange(loadDateRange, interval);
   const data: PromiseSettledResult<listenSummary[]>[] =
@@ -123,9 +133,63 @@ order by
   });
 };
 
+const loadLastfmMonthSummary = async (
+  dateRange: Range
+): Promise<DataItem[]> => {
+  const loadDateRange = expandToYear(dateRange);
+  const ranges = chunkRange(loadDateRange, "year");
+  const data: PromiseSettledResult<listenSummary[]>[] =
+    await Promise.allSettled(
+      ranges.map(async ({ start, end }): Promise<listenSummary[]> => {
+        const url = `https://lastfm.jamesst.one/music.json?_shape=array&sql=select
+  strftime(
+    '%Y-%m-01',
+    datetime(date_uts, 'unixepoch', 'localtime')
+  ) AS day,
+  COUNT(rowid) AS count
+from
+  listens
+where date_uts < ${end.unix()}
+and date_uts >= ${start.unix()}
+group by
+  1
+order by
+  1 desc
+`;
+        return await datasetteFetch(addTTL(encodeURI(url), dateRange));
+      })
+    );
+  return data.flatMap((d, i): DataItem[] => {
+    if (d.status === "rejected") {
+      return [
+        errorDataItem(
+          {
+            group: "Music",
+            content: d.reason,
+            title: "Loading Error",
+          },
+          ranges[i]
+        ),
+      ];
+    }
+    return d.value.map((listenSummary) => ({
+      group: "Music",
+      content: `Listened to  ${listenSummary.count} songs during ${moment(
+        listenSummary.day
+      ).format("MMM YY")} `,
+      title: `Listens: ${listenSummary.count}`,
+      start: moment(listenSummary.day).toDate(),
+      end: moment(listenSummary.day).add(1, "month").startOf("month").toDate(),
+    }));
+  });
+};
+
 export const loadLastfm: Loader = async (dateRange): Promise<DataItem[]> => {
-  if (overAWeek(dateRange)) {
-    return await loadLastfmSummary(dateRange);
+  if (overWeeks(6, dateRange)) {
+    return await loadLastfmMonthSummary(dateRange);
+  }
+  if (overDays(5, dateRange)) {
+    return await loadLastfmDaySummary(dateRange);
   }
   return await loadLastfmDay(dateRange);
 };

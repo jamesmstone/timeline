@@ -1,17 +1,30 @@
 import * as moment from "moment";
+import { unitOfTime } from "moment";
 
 export type Range = { start: moment.Moment; end: moment.Moment };
 export type Interval = moment.unitOfTime.DurationConstructor;
 
-export const overAWeek = ({ start, end }: Range): boolean => {
-  const newStart = start.clone().add(1, "week");
-  return newStart.isAfter(end);
-};
+export const diff = (unit: unitOfTime.Diff, { start, end }: Range): number =>
+  start.diff(end, unit, true);
+const diffWeeks = (range: Range): number => diff("week", range);
+const diffDays = (range: Range): number => diff("day", range);
+export const overWeeks = (amount: number, range: Range): boolean =>
+  Math.abs(diffWeeks(range)) > amount;
+export const overDays = (amount: number, range: Range): boolean =>
+  Math.abs(diffDays(range)) > amount;
+export const overAWeek = (range: Range): boolean => overWeeks(1, range);
 
 export const expandToMonth = ({ start, end }: Range): Range => {
   return {
     start: start.clone().startOf("month"),
     end: end.clone().endOf("month"),
+  };
+};
+
+export const expandToYear = ({ start, end }: Range): Range => {
+  return {
+    start: start.clone().startOf("year"),
+    end: end.clone().endOf("year"),
   };
 };
 

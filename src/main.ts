@@ -1,7 +1,12 @@
 import { DataSet } from "vis-data/peer";
 import { Timeline } from "vis-timeline/peer";
 import "vis-timeline/styles/vis-timeline-graph2d.css";
-import { DataItem, DataSetDataItem, TimelineWindow } from "vis-timeline";
+import {
+  DataItem,
+  DataSetDataItem,
+  TimelineOptions,
+  TimelineWindow,
+} from "vis-timeline";
 import { Range } from "./range";
 import { loadLastfm } from "./lastfm";
 import * as moment from "moment/moment";
@@ -46,7 +51,9 @@ const updateTimelineForDateRange = async (dateRange: Range): Promise<void> => {
 const container = document.getElementById("visualization");
 
 const items: DataSetDataItem = new DataSet<DataItem>();
-const options = {};
+const options: TimelineOptions = {
+  stack: false,
+};
 const timeline = new Timeline(container, items, options);
 
 timeline.on("rangechanged", (properties: TimelineWindow) => {
