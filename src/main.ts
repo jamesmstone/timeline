@@ -42,11 +42,6 @@ const loadDataForDateRange = async (dateRange: Range): Promise<DataItem[]> => {
 };
 
 export type Loader = typeof loadDataForDateRange;
-const updateTimelineForDateRange = async (dateRange: Range): Promise<void> => {
-  const data: DataItem[] = await loadDataForDateRange(dateRange);
-  items.clear();
-  items.add(data);
-};
 
 const container = document.getElementById("visualization");
 
@@ -60,9 +55,17 @@ const options: TimelineOptions = {
 };
 const timeline = new Timeline(container, items, options);
 
+const updateTimelineForDateRange = async (dateRange: Range): Promise<void> => {
+  const data: DataItem[] = await loadDataForDateRange(dateRange);
+  items.clear();
+  items.add(data);
+};
+
 timeline.on("rangechanged", (properties: TimelineWindow) => {
   updateTimelineForDateRange({
     start: moment(properties.start),
     end: moment(properties.end),
   }).then(() => {});
 });
+
+updateTimelineForDateRange({ start, end }).then(() => {});
