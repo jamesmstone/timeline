@@ -19,8 +19,8 @@ export const errorDataItem = (
   group,
   content,
   title,
-  start: start.date(),
-  end: end.date(),
+  start: start.toDate(),
+  end: end.toDate(),
 });
 
 const loadDataForDateRange = async (dateRange: Range): Promise<DataItem[]> => {
