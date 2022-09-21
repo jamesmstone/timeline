@@ -45,19 +45,20 @@ type listenSummary = { day: string; count: number };
 
 const interval: Interval = "month";
 
+const firstLastFM = "2012-10-01";
 const loadLastfmDay = async (dateRange: Range) => {
   const loadDateRange = expandToMonth(dateRange);
   const ranges = chunkRange(loadDateRange, interval);
   const data: PromiseSettledResult<listenDetail[]>[] = await Promise.allSettled(
-    ranges.map(
-      async ({ start, end }): Promise<listenDetail[]> =>
-        await datasetteFetch(
-          addTTL(
-            `https://lastfm.jamesst.one/music/listen_details.json?_json=image&_json=image:1&date_uts__lt=${end.unix()}&_sort_desc=date_uts&date_uts__gte=${start.unix()}&_shape=array`,
-            dateRange
-          )
+    ranges.map(async ({ start, end }): Promise<listenDetail[]> => {
+      if (end.isBefore(firstLastFM)) return [];
+      return await datasetteFetch(
+        addTTL(
+          `https://lastfm.jamesst.one/music/listen_details.json?_json=image&_json=image:1&date_uts__lt=${end.unix()}&_sort_desc=date_uts&date_uts__gte=${start.unix()}&_shape=array`,
+          dateRange
         )
-    )
+      );
+    })
   );
   return data.flatMap((d, i): DataItem[] => {
     if (d.status === "rejected") {
@@ -92,6 +93,7 @@ const loadLastfmDaySummary = async (dateRange: Range) => {
   const data: PromiseSettledResult<listenSummary[]>[] =
     await Promise.allSettled(
       ranges.map(async ({ start, end }): Promise<listenSummary[]> => {
+        if (end.isBefore(firstLastFM)) return [];
         const url = `https://lastfm.jamesst.one/music.json?_shape=array&sql=select
   strftime(
     '%Y-%m-%d',
@@ -141,6 +143,7 @@ const loadLastfmMonthSummary = async (
   const data: PromiseSettledResult<listenSummary[]>[] =
     await Promise.allSettled(
       ranges.map(async ({ start, end }): Promise<listenSummary[]> => {
+        if (end.isBefore(firstLastFM)) return [];
         const url = `https://lastfm.jamesst.one/music.json?_shape=array&sql=select
   strftime(
     '%Y-%m-01',
@@ -185,6 +188,7 @@ order by
 };
 
 export const loadLastfm: Loader = async (dateRange): Promise<DataItem[]> => {
+  if (dateRange.end.isBefore(firstLastFM)) return [];
   if (overWeeks(6, dateRange)) {
     return await loadLastfmMonthSummary(dateRange);
   }
