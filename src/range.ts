@@ -27,6 +27,12 @@ export const expandToYear = ({ start, end }: Range): Range => {
     end: end.clone().endOf("year"),
   };
 };
+export const expandToDecade = ({ start, end }: Range): Range => {
+  return {
+    start: start.clone().startOf("year").subtract("9", "years"),
+    end: end.clone().endOf("year"),
+  };
+};
 
 export const createRange = (start: Range["start"], end: Range["end"]) => ({
   start: start.clone(),

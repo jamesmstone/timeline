@@ -50,8 +50,8 @@ const end = moment().endOf("day");
 const start = end.clone().subtract(5, "day").startOf("day");
 const options: TimelineOptions = {
   stack: false,
-  start: start.date(),
-  end: end.date(),
+  start: start.toDate(),
+  end: end.toDate(),
 };
 const timeline = new Timeline(container, items, options);
 
