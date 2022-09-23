@@ -1,11 +1,10 @@
 import { errorDataItem, Loader } from "./main";
 import {
   chunkRange,
-  diff, expandToDecade,
+  expandToDecade,
   expandToMonth,
   expandToYear,
   Interval,
-  overAWeek,
   overDays,
   overWeeks,
   Range,
