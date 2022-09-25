@@ -12,6 +12,7 @@
   "dependencies": {
     "@vercel/node": "^2.5.14",
     "moment": "^2.29.4",
+    "moment-timezone": "^0.5.37",
     "p-limit": "^4.0.0",
     "p-memoize": "^7.1.0",
     "vis-data": "^7.1.4",

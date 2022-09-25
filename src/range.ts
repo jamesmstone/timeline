@@ -1,11 +1,12 @@
-import * as moment from "moment";
-import { unitOfTime } from "moment";
+import * as moment from "moment-timezone";
 
 export type Range = { start: moment.Moment; end: moment.Moment };
 export type Interval = moment.unitOfTime.DurationConstructor;
 
-export const diff = (unit: unitOfTime.Diff, { start, end }: Range): number =>
-  start.diff(end, unit, true);
+export const diff = (
+  unit: moment.unitOfTime.Diff,
+  { start, end }: Range
+): number => start.diff(end, unit, true);
 const diffWeeks = (range: Range): number => diff("week", range);
 const diffDays = (range: Range): number => diff("day", range);
 export const overWeeks = (amount: number, range: Range): boolean =>

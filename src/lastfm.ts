@@ -1,4 +1,4 @@
-import { errorDataItem, Loader } from "./main";
+import { errorDataItem, Group, Loader } from "./main";
 import {
   chunkRange,
   expandToDecade,
@@ -10,7 +10,7 @@ import {
   Range,
 } from "./range";
 import { DataItem } from "vis-timeline";
-import * as moment from "moment";
+import * as moment from "moment-timezone";
 import { addTTL, datasetteFetch } from "./datasette";
 
 type listenDetail = {
@@ -42,6 +42,7 @@ type listenDetail = {
 
 type listenSummary = { day: string; count: number };
 
+const group: Group = "Music";
 const interval: Interval = "month";
 
 const firstLastFM = "2012-10-01";
@@ -50,7 +51,7 @@ const loadLastfmDay = async (dateRange: Range) => {
   const ranges = chunkRange(loadDateRange, interval);
   const data: PromiseSettledResult<listenDetail[]>[] = await Promise.allSettled(
     ranges.map(async ({ start, end }): Promise<listenDetail[]> => {
-      if (end.isBefore(firstLastFM)) return [];
+      if (end.isBefore(firstLastFM) || start.isAfter(moment())) return [];
       return await datasetteFetch(
         addTTL(
           `https://lastfm.jamesst.one/music/listen_details.json?_json=image&_json=image:1&date_uts__lt=${end.unix()}&_sort_desc=date_uts&date_uts__gte=${start.unix()}&_shape=array`,
@@ -64,7 +65,7 @@ const loadLastfmDay = async (dateRange: Range) => {
       return [
         errorDataItem(
           {
-            group: "Music",
+            group,
             content: d.reason,
             title: "Loading Error",
           },
@@ -74,8 +75,8 @@ const loadLastfmDay = async (dateRange: Range) => {
     }
     return d.value.map((listenDetail) => {
       return {
-        group: "Music",
-        content: `<img alt="${listenDetail.name}" loading="lazy" src="${listenDetail.image[0]["#text"]}"/>${listenDetail.name} `,
+        group,
+        content: `<img height="34px" alt="${listenDetail.name}" loading="lazy" src="${listenDetail.image[0]["#text"]}"/>${listenDetail.name} `,
         title: listenDetail.name,
         start: moment.unix(parseInt(listenDetail.date_uts)).toDate(),
         end: moment
@@ -92,11 +93,11 @@ const loadLastfmDaySummary = async (dateRange: Range) => {
   const data: PromiseSettledResult<listenSummary[]>[] =
     await Promise.allSettled(
       ranges.map(async ({ start, end }): Promise<listenSummary[]> => {
-        if (end.isBefore(firstLastFM)) return [];
+        if (end.isBefore(firstLastFM) || start.isAfter(moment())) return [];
         const url = `https://lastfm.jamesst.one/music.json?_shape=array&sql=select
   strftime(
     '%Y-%m-%d',
-    datetime(date_uts, 'unixepoch', 'localtime')
+    datetime(date_uts, 'unixepoch')
   ) AS day,
   COUNT(rowid) AS count
 from
@@ -116,7 +117,7 @@ order by
       return [
         errorDataItem(
           {
-            group: "Music",
+            group,
             content: d.reason,
             title: "Loading Error",
           },
@@ -125,7 +126,7 @@ order by
       ];
     }
     return d.value.map((listenSummary) => ({
-      group: "Music",
+      group,
       content: `Listened to  ${listenSummary.count} songs on ${listenSummary.day} `,
       title: `Listens: ${listenSummary.count}`,
       start: moment(listenSummary.day).toDate(),
@@ -142,11 +143,11 @@ const loadLastfmMonthSummary = async (
   const data: PromiseSettledResult<listenSummary[]>[] =
     await Promise.allSettled(
       ranges.map(async ({ start, end }): Promise<listenSummary[]> => {
-        if (end.isBefore(firstLastFM)) return [];
+        if (end.isBefore(firstLastFM) || start.isAfter(moment())) return [];
         const url = `https://lastfm.jamesst.one/music.json?_shape=array&sql=select
   strftime(
     '%Y-%m-01',
-    datetime(date_uts, 'unixepoch', 'localtime')
+    datetime(date_uts, 'unixepoch')
   ) AS day,
   COUNT(rowid) AS count
 from
@@ -166,7 +167,7 @@ order by
       return [
         errorDataItem(
           {
-            group: "Music",
+            group,
             content: d.reason,
             title: "Loading Error",
           },
@@ -175,7 +176,7 @@ order by
       ];
     }
     return d.value.map((listenSummary) => ({
-      group: "Music",
+      group,
       content: `Listened to  ${listenSummary.count} songs during ${moment(
         listenSummary.day
       ).format("MMM YY")} `,
@@ -192,11 +193,11 @@ const loadLastfmYearSummary = async (dateRange: Range): Promise<DataItem[]> => {
   const data: PromiseSettledResult<listenSummary[]>[] =
     await Promise.allSettled(
       ranges.map(async ({ start, end }): Promise<listenSummary[]> => {
-        if (end.isBefore(firstLastFM)) return [];
+        if (end.isBefore(firstLastFM) || start.isAfter(moment())) return [];
         const url = `https://lastfm.jamesst.one/music.json?_shape=array&sql=select
   strftime(
     '%Y-01-01',
-    datetime(date_uts, 'unixepoch', 'localtime')
+    datetime(date_uts, 'unixepoch')
   ) AS day,
   COUNT(rowid) AS count
 from
@@ -216,7 +217,7 @@ order by
       return [
         errorDataItem(
           {
-            group: "Music",
+            group,
             content: d.reason,
             title: "Loading Error",
           },
@@ -225,7 +226,7 @@ order by
       ];
     }
     return d.value.map((listenSummary) => ({
-      group: "Music",
+      group,
       content: `Listened to  ${listenSummary.count} songs during ${moment(
         listenSummary.day
       ).format("YYYY")} `,
@@ -237,7 +238,12 @@ order by
 };
 
 export const loadLastfm: Loader = async (dateRange): Promise<DataItem[]> => {
-  if (dateRange.end.isBefore(firstLastFM)) return [];
+  if (
+    dateRange.end.isBefore(firstLastFM) ||
+    dateRange.start.isAfter(moment())
+  ) {
+    return [];
+  }
   if (overWeeks(52, dateRange)) {
     return await loadLastfmYearSummary(dateRange);
   }
