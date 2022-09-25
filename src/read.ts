@@ -88,15 +88,12 @@ const loadReadDaySummary = async (dateRange: Range) => {
     ranges.map(async ({ start, end }): Promise<readSummary[]> => {
       if (end.isBefore(firstRead) || start.isAfter(moment())) return [];
       const url = `https://api-read.jamesst.one/readingList.json?_shape=array&sql=select
-  strftime(
-    '%Y-%m-%d',
-    unixepoch(date, 'unixepoch')
-  ) AS day,
+  strftime('%Y-%m-%d', date) AS day,
   COUNT(rowid) AS count
 from
   read
-where unixepoch(date, 'unixepoch') < ${end.unix()}
-and unixepoch(date, 'unixepoch') >= ${start.unix()}
+where unixepoch(date) < ${end.unix()}
+and unixepoch(date) >= ${start.unix()}
 group by
   1
 order by
@@ -120,8 +117,8 @@ order by
     }
     return d.value.map((summary) => ({
       group: group,
-      content: `Listened to  ${summary.count} songs on ${summary.day} `,
-      title: `Listens: ${summary.count}`,
+      content: `Read  ${summary.count} articles on ${summary.day} `,
+      title: `Read: ${summary.count}`,
       start: moment(summary.day).toDate(),
       end: moment(summary.day).add(1, "day").startOf("day").toDate(),
     }));
@@ -135,15 +132,12 @@ const loadReadMonthSummary = async (dateRange: Range): Promise<DataItem[]> => {
     ranges.map(async ({ start, end }): Promise<readSummary[]> => {
       if (end.isBefore(firstRead) || start.isAfter(moment())) return [];
       const url = `https://api-read.jamesst.one/readingList.json?_shape=array&sql=select
-  strftime(
-    '%Y-%m-01',
-    unixepoch(date, 'unixepoch')
-  ) AS day,
+  strftime('%Y-%m-01', date) AS day,
   COUNT(rowid) AS count
 from
   read
-where unixepoch(date, 'unixepoch') < ${end.unix()}
-and unixepoch(date, 'unixepoch') >= ${start.unix()}
+where unixepoch(date) < ${end.unix()}
+and unixepoch(date) >= ${start.unix()}
 group by
   1
 order by
@@ -184,15 +178,12 @@ const loadReadYearSummary = async (dateRange: Range): Promise<DataItem[]> => {
     ranges.map(async ({ start, end }): Promise<readSummary[]> => {
       if (end.isBefore(firstRead) || start.isAfter(moment())) return [];
       const url = `https://api-read.jamesst.one/readingList.json?_shape=array&sql=select
-  strftime(
-    '%Y-01-01',
-    unixepoch(date, 'unixepoch')
-  ) AS day,
+  strftime('%Y-01-01', date) AS day,
   COUNT(rowid) AS count
 from
   read
-where unixepoch(date, 'unixepoch') < ${end.unix()}
-and unixepoch(date, 'unixepoch') >= ${start.unix()}
+where unixepoch(date) < ${end.unix()}
+and unixepoch(date) >= ${start.unix()}
 group by
   1
 order by
