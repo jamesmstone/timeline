@@ -5,6 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="James Stone's timeline" />
     <title>Timeline</title>
+    <style>
+      html {
+        font-family: arial, sans-serif;
+        font-size: 11pt;
+      }
+      .line .vis-timeline {
+        display: inline-block;
+      }
+      .line::before {
+        content: attr(id);
+        width: 70px;
+        font-size: x-large;
+        writing-mode: vertical-lr;
+        transform: rotate(-180deg);
+      }
+      .line:not(:last-child) .vis-panel.vis-bottom {
+        display: none;
+      }
+      .vis-panel.vis-left {
+        width: 75px;
+      }
+      .vis-data-axis {
+        max-width: 75px;
+      }
+   
+    </style>
   </head>
   <body>
     <h1>Timeline</h1>

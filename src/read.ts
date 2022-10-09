@@ -1,4 +1,11 @@
-import { errorDataItem, Group, Loader } from "./main";
+import {
+  errorDataItem,
+  GraphDataItem,
+  graphErrorDataItem,
+  Group,
+  Loader,
+  TimelineDataItem,
+} from "./main";
 import {
   chunkRange,
   expandToDecade,
@@ -81,7 +88,9 @@ order by
     });
   });
 };
-const loadReadDaySummary = async (dateRange: Range) => {
+const loadReadDaySummary = async (
+  dateRange: Range
+): Promise<GraphDataItem[]> => {
   const loadDateRange = expandToMonth(dateRange);
   const ranges = chunkRange(loadDateRange, interval);
   const data: PromiseSettledResult<readSummary[]>[] = await Promise.allSettled(
@@ -102,10 +111,10 @@ order by
       return await datasetteFetch(addTTL(encodeURI(url), dateRange));
     })
   );
-  return data.flatMap((d, i): DataItem[] => {
+  return data.flatMap((d, i): GraphDataItem[] => {
     if (d.status === "rejected") {
       return [
-        errorDataItem(
+        graphErrorDataItem(
           {
             group: group,
             content: d.reason,
@@ -115,17 +124,25 @@ order by
         ),
       ];
     }
-    return d.value.map((summary) => ({
-      group: group,
-      content: `Read  ${summary.count} articles on ${summary.day} `,
-      title: `Read: ${summary.count}`,
-      start: moment(summary.day).toDate(),
-      end: moment(summary.day).add(1, "day").startOf("day").toDate(),
-    }));
+    return d.value.map((summary) => {
+      const start = moment(summary.day).toDate();
+
+      return {
+        group: group,
+        content: `Read  ${summary.count} articles on ${summary.day} `,
+        title: `Read: ${summary.count}`,
+        x: start,
+        y: summary.count,
+        start,
+        end: moment(summary.day).add(1, "day").startOf("day").toDate(),
+      };
+    });
   });
 };
 
-const loadReadMonthSummary = async (dateRange: Range): Promise<DataItem[]> => {
+const loadReadMonthSummary = async (
+  dateRange: Range
+): Promise<GraphDataItem[]> => {
   const loadDateRange = expandToYear(dateRange);
   const ranges = chunkRange(loadDateRange, "year");
   const data: PromiseSettledResult<readSummary[]>[] = await Promise.allSettled(
@@ -146,10 +163,10 @@ order by
       return await datasetteFetch(addTTL(encodeURI(url), dateRange));
     })
   );
-  return data.flatMap((d, i): DataItem[] => {
+  return data.flatMap((d, i): GraphDataItem[] => {
     if (d.status === "rejected") {
       return [
-        errorDataItem(
+        graphErrorDataItem(
           {
             group: group,
             content: d.reason,
@@ -159,19 +176,26 @@ order by
         ),
       ];
     }
-    return d.value.map((summary) => ({
-      group: group,
-      content: `Read  ${summary.count} articles during ${moment(
-        summary.day
-      ).format("MMM YY")} `,
-      title: `Reads: ${summary.count}`,
-      start: moment(summary.day).toDate(),
-      end: moment(summary.day).add(1, "month").startOf("month").toDate(),
-    }));
+    return d.value.map((summary) => {
+      const start = moment(summary.day).toDate();
+      return {
+        group: group,
+        content: `Read  ${summary.count} articles during ${moment(
+          summary.day
+        ).format("MMM YY")} `,
+        title: `Reads: ${summary.count}`,
+        x: start,
+        y: summary.count,
+        start,
+        end: moment(summary.day).add(1, "month").startOf("month").toDate(),
+      };
+    });
   });
 };
 
-const loadReadYearSummary = async (dateRange: Range): Promise<DataItem[]> => {
+const loadReadYearSummary = async (
+  dateRange: Range
+): Promise<GraphDataItem[]> => {
   const loadDateRange = expandToDecade(dateRange);
   const ranges = chunkRange(loadDateRange, "year");
   const data: PromiseSettledResult<readSummary[]>[] = await Promise.allSettled(
@@ -192,10 +216,10 @@ order by
       return await datasetteFetch(addTTL(encodeURI(url), dateRange));
     })
   );
-  return data.flatMap((d, i): DataItem[] => {
+  return data.flatMap((d, i): GraphDataItem[] => {
     if (d.status === "rejected") {
       return [
-        errorDataItem(
+        graphErrorDataItem(
           {
             group: group,
             content: d.reason,
@@ -205,30 +229,37 @@ order by
         ),
       ];
     }
-    return d.value.map((summary) => ({
-      group: group,
-      content: `Read  ${summary.count} articles during ${moment(
-        summary.day
-      ).format("YYYY")} `,
-      title: `Reads: ${summary.count}`,
-      start: moment(summary.day).toDate(),
-      end: moment(summary.day).add(1, "year").startOf("year").toDate(),
-    }));
+    return d.value.map((summary) => {
+      const start = moment(summary.day).toDate();
+      return {
+        group: group,
+        content: `Read  ${summary.count} articles during ${moment(
+          summary.day
+        ).format("YYYY")} `,
+        title: `Reads: ${summary.count}`,
+        x: start,
+        y: summary.count,
+        start,
+        end: moment(summary.day).add(1, "year").startOf("year").toDate(),
+      };
+    });
   });
 };
 
-export const loadRead: Loader = async (dateRange): Promise<DataItem[]> => {
+export const loadRead: Loader = async (
+  dateRange: Range
+): Promise<TimelineDataItem> => {
   if (dateRange.end.isBefore(firstRead) || dateRange.start.isAfter(moment())) {
-    return [];
+    return { type: "timeline", data: [] };
   }
   if (overWeeks(52, dateRange)) {
-    return await loadReadYearSummary(dateRange);
+    return { type: "graph", data: await loadReadYearSummary(dateRange) };
   }
   if (overWeeks(6, dateRange)) {
-    return await loadReadMonthSummary(dateRange);
+    return { type: "graph", data: await loadReadMonthSummary(dateRange) };
   }
   if (overDays(5, dateRange)) {
-    return await loadReadDaySummary(dateRange);
+    return { type: "graph", data: await loadReadDaySummary(dateRange) };
   }
-  return await loadReadDay(dateRange);
+  return { type: "timeline", data: await loadReadDay(dateRange) };
 };

@@ -1,4 +1,11 @@
-import { errorDataItem, Group, Loader } from "./main";
+import {
+  errorDataItem,
+  GraphDataItem,
+  graphErrorDataItem,
+  Group,
+  Loader,
+  TimelineDataItem,
+} from "./main";
 import {
   chunkRange,
   expandToDecade,
@@ -87,7 +94,9 @@ const loadLastfmDay = async (dateRange: Range) => {
     });
   });
 };
-const loadLastfmDaySummary = async (dateRange: Range) => {
+const loadLastfmDaySummary = async (
+  dateRange: Range
+): Promise<GraphDataItem[]> => {
   const loadDateRange = expandToMonth(dateRange);
   const ranges = chunkRange(loadDateRange, interval);
   const data: PromiseSettledResult<listenSummary[]>[] =
@@ -112,10 +121,10 @@ order by
         return await datasetteFetch(addTTL(encodeURI(url), dateRange));
       })
     );
-  return data.flatMap((d, i): DataItem[] => {
+  return data.flatMap((d, i): GraphDataItem[] => {
     if (d.status === "rejected") {
       return [
-        errorDataItem(
+        graphErrorDataItem(
           {
             group,
             content: d.reason,
@@ -125,19 +134,24 @@ order by
         ),
       ];
     }
-    return d.value.map((listenSummary) => ({
-      group,
-      content: `Listened to  ${listenSummary.count} songs on ${listenSummary.day} `,
-      title: `Listens: ${listenSummary.count}`,
-      start: moment(listenSummary.day).toDate(),
-      end: moment(listenSummary.day).add(1, "day").startOf("day").toDate(),
-    }));
+    return d.value.map((listenSummary) => {
+      const start = moment(listenSummary.day).toDate();
+      return {
+        group,
+        content: `Listened to  ${listenSummary.count} songs on ${listenSummary.day} `,
+        title: `Listens: ${listenSummary.count}`,
+        x: start,
+        y: listenSummary.count,
+        start,
+        end: moment(listenSummary.day).add(1, "day").startOf("day").toDate(),
+      };
+    });
   });
 };
 
 const loadLastfmMonthSummary = async (
   dateRange: Range
-): Promise<DataItem[]> => {
+): Promise<GraphDataItem[]> => {
   const loadDateRange = expandToYear(dateRange);
   const ranges = chunkRange(loadDateRange, "year");
   const data: PromiseSettledResult<listenSummary[]>[] =
@@ -162,10 +176,10 @@ order by
         return await datasetteFetch(addTTL(encodeURI(url), dateRange));
       })
     );
-  return data.flatMap((d, i): DataItem[] => {
+  return data.flatMap((d, i): GraphDataItem[] => {
     if (d.status === "rejected") {
       return [
-        errorDataItem(
+        graphErrorDataItem(
           {
             group,
             content: d.reason,
@@ -175,19 +189,30 @@ order by
         ),
       ];
     }
-    return d.value.map((listenSummary) => ({
-      group,
-      content: `Listened to  ${listenSummary.count} songs during ${moment(
-        listenSummary.day
-      ).format("MMM YY")} `,
-      title: `Listens: ${listenSummary.count}`,
-      start: moment(listenSummary.day).toDate(),
-      end: moment(listenSummary.day).add(1, "month").startOf("month").toDate(),
-    }));
+    return d.value.map((listenSummary) => {
+      const start = moment(listenSummary.day).toDate();
+
+      return {
+        group,
+        content: `Listened to  ${listenSummary.count} songs during ${moment(
+          listenSummary.day
+        ).format("MMM YY")} `,
+        title: `Listens: ${listenSummary.count}`,
+        x: start,
+        y: listenSummary.count,
+        start,
+        end: moment(listenSummary.day)
+          .add(1, "month")
+          .startOf("month")
+          .toDate(),
+      };
+    });
   });
 };
 
-const loadLastfmYearSummary = async (dateRange: Range): Promise<DataItem[]> => {
+const loadLastfmYearSummary = async (
+  dateRange: Range
+): Promise<GraphDataItem[]> => {
   const loadDateRange = expandToDecade(dateRange);
   const ranges = chunkRange(loadDateRange, "year");
   const data: PromiseSettledResult<listenSummary[]>[] =
@@ -212,10 +237,10 @@ order by
         return await datasetteFetch(addTTL(encodeURI(url), dateRange));
       })
     );
-  return data.flatMap((d, i): DataItem[] => {
+  return data.flatMap((d, i): GraphDataItem[] => {
     if (d.status === "rejected") {
       return [
-        errorDataItem(
+        graphErrorDataItem(
           {
             group,
             content: d.reason,
@@ -225,33 +250,40 @@ order by
         ),
       ];
     }
-    return d.value.map((listenSummary) => ({
-      group,
-      content: `Listened to  ${listenSummary.count} songs during ${moment(
-        listenSummary.day
-      ).format("YYYY")} `,
-      title: `Listens: ${listenSummary.count}`,
-      start: moment(listenSummary.day).toDate(),
-      end: moment(listenSummary.day).add(1, "year").startOf("year").toDate(),
-    }));
+    return d.value.map((listenSummary) => {
+      const start = moment(listenSummary.day).toDate();
+      return {
+        group,
+        content: `Listened to  ${listenSummary.count} songs during ${moment(
+          listenSummary.day
+        ).format("YYYY")} `,
+        title: `Listens: ${listenSummary.count}`,
+        x: start,
+        y: listenSummary.count,
+        start,
+        end: moment(listenSummary.day).add(1, "year").startOf("year").toDate(),
+      };
+    });
   });
 };
 
-export const loadLastfm: Loader = async (dateRange): Promise<DataItem[]> => {
+export const loadLastfm: Loader = async (
+  dateRange
+): Promise<TimelineDataItem> => {
   if (
     dateRange.end.isBefore(firstLastFM) ||
     dateRange.start.isAfter(moment())
   ) {
-    return [];
+    return { type: "timeline", data: [] };
+  }
+  if (overWeeks(52*5, dateRange)) {
+    return { type: "graph", data: await loadLastfmYearSummary(dateRange) };
   }
   if (overWeeks(52, dateRange)) {
-    return await loadLastfmYearSummary(dateRange);
+    return { type: "graph", data: await loadLastfmMonthSummary(dateRange) };
   }
-  if (overWeeks(6, dateRange)) {
-    return await loadLastfmMonthSummary(dateRange);
+  if (overDays(52, dateRange)) {
+    return { type: "graph", data: await loadLastfmDaySummary(dateRange) };
   }
-  if (overDays(5, dateRange)) {
-    return await loadLastfmDaySummary(dateRange);
-  }
-  return await loadLastfmDay(dateRange);
+  return { type: "timeline", data: await loadLastfmDay(dateRange) };
 };
