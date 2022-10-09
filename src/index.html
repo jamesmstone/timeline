@@ -12,13 +12,15 @@
       }
       .line .vis-timeline {
         display: inline-block;
+        margin-left: 50px;
+        margin-right: 10px;
       }
       .line::before {
         content: attr(id);
-        width: 70px;
-        font-size: x-large;
         writing-mode: vertical-lr;
+        font-size: x-large;
         transform: rotate(-180deg);
+        position: absolute;
       }
       .line:not(:last-child) .vis-panel.vis-bottom {
         display: none;

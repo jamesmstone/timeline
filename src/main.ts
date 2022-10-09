@@ -93,9 +93,7 @@ const setLineGraph = (
       width: 75,
       left: {
         // @ts-ignore
-        format: (value) => {
-          return "" + value.toPrecision(3);
-        },
+        format: (value) => value.toLocaleString(),
       },
     },
     // @ts-ignore
@@ -107,7 +105,7 @@ const setLineGraph = (
   return new Graph2d(container, line.data, graphOptions);
 };
 
-const width = "65vw";
+const width = "100%";
 const setLineTimeline = (
   range: Range,
   container: HTMLElement,
