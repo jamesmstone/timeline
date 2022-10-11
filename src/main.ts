@@ -10,8 +10,17 @@ import { Graph2dOptions } from "vis-timeline/types";
 import * as moment from "moment-timezone";
 import { Range } from "./range";
 import { clearWaitingRequests } from "./fetcher";
-import { loadLastfm } from "./lastfm";
-import { loadRead } from "./read";
+import { loadRead, loadLastfm } from "./datasetteLoaders";
+
+const debounce = (func, timeout = 300) => {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      func.apply(this, args);
+    }, timeout);
+  };
+};
 
 export const errorDataItem = (
   { group, title, content }: Pick<DataItem, "group" | "title" | "content">,
@@ -51,18 +60,22 @@ export type TimelineDataItem =
 
 const loadDataForDateRange = async (
   group: Group,
-  dateRange: Range
+  dateRange: Range,
+  search?: string
 ): Promise<TimelineDataItem> => {
   clearWaitingRequests();
   switch (group) {
     case "Music":
-      return await loadLastfm(dateRange);
+      return await loadLastfm(dateRange, search);
     case "Read":
-      return await loadRead(dateRange);
+      return await loadRead(dateRange, search);
   }
 };
 
-export type Loader = (dateRange: Range) => Promise<TimelineDataItem>;
+export type Loader = (
+  dateRange: Range,
+  search: string | undefined
+) => Promise<TimelineDataItem>;
 
 const end = moment.tz("UTC").endOf("day");
 const start = end.clone().subtract(5, "day").startOf("day");
@@ -140,6 +153,7 @@ const updateAllLinesRange = async (
     }
   }
 };
+const search = document.getElementById("search");
 
 const setLine = (
   container: HTMLElement,
@@ -157,7 +171,13 @@ const setLine = (
       start: moment.tz(properties.start, "UTC"),
       end: moment.tz(properties.end, "UTC"),
     };
-    const newLineData = await loadDataForDateRange(group, newRange);
+
+    const newLineData = await loadDataForDateRange(
+      group,
+      newRange,
+      // @ts-ignore
+      search.value
+    );
     if (newLineData.type !== lineData.type) {
       line.destroy();
       const container = document.getElementById(group);
@@ -184,6 +204,25 @@ const setLine = (
 };
 
 const run = async () => {
+  const onSearch = debounce(async (e) => {
+    // @ts-ignore
+    const searchValue = e.target.value;
+    for (const { line, group } of lines) {
+      const window = line.getWindow();
+      const newLineData = await loadDataForDateRange(
+        group,
+        {
+          start: moment(window.start),
+          end: moment(window.end),
+        },
+        searchValue
+      );
+      line.setItems(newLineData.data);
+    }
+  });
+
+  search.addEventListener("input", onSearch);
+
   const container = document.getElementById("visualization");
 
   const groupDivs: { groupDiv: HTMLDivElement; group: Group }[] = groups.map(
@@ -199,35 +238,17 @@ const run = async () => {
   });
 
   for (const { group, groupDiv } of groupDivs) {
-    const data = await loadDataForDateRange(group, initRange);
+    const data = await loadDataForDateRange(
+      group,
+      initRange,
+      // @ts-ignore
+      search.value
+    );
     lines = [
       ...lines,
       { group, line: setLine(groupDiv, data, initRange, group) },
     ];
   }
-
-  //
-  // const timelineGroups: TimelineGroup[] = groups.map((group) => ({
-  //   content: group,
-  //   subgroupStack: stackGroup(group),
-  //   id: group,
-  // }));
-  // timeline.setGroups(timelineGroups);
-  // const updateTimelineForDateRange = async (dateRange: Range): Promise<void> => {
-  //   const data: DataItem[] = await loadDataForDateRange(dateRange);
-  //
-  //   items.clear();
-  //   items.add(data);
-  // };
-  //
-  // timeline.on("rangechanged", (properties: TimelineWindow) => {
-  //   updateTimelineForDateRange({
-  //     start: moment.tz(properties.start, "UTC"),
-  //     end: moment.tz(properties.end, "UTC"),
-  //   }).then(() => {});
-  // });
-  //
-  // updateTimelineForDateRange({ start, end }).then(() => {});
 
   /* 
   # Datasets

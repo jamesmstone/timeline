@@ -19,8 +19,10 @@
         content: attr(id);
         writing-mode: vertical-lr;
         font-size: x-large;
-        transform: rotate(-180deg);
         position: absolute;
+        transform: rotate(-180deg);
+        text-align: center;
+        height: 100%;
       }
       .line:not(:last-child) .vis-panel.vis-bottom {
         display: none;
@@ -31,11 +33,12 @@
       .vis-data-axis {
         max-width: 75px;
       }
-   
     </style>
   </head>
   <body>
     <h1>Timeline</h1>
+    <label for="search">Search:</label
+    ><input id="search" placeholder="Search" /><br />
     <div id="visualization"></div>
     <script type="module" src="./main.ts"></script>
   </body>
