@@ -424,7 +424,7 @@ export const loadLastfm: Loader = getDatasetteLoader<
   start: moment("2012-10-01"),
   end: moment(),
   detailContentFormatter: (listenDetail) => {
-    return `<img height="34px" alt="${listenDetail.name}" loading="lazy" src="${listenDetail.image[0]["#text"]}"/>${listenDetail.name} `;
+    return `<img height="34px" alt="${listenDetail.name}" loading="lazy" src="${listenDetail.image[0]["#text"]}"/>${listenDetail.name} ${listenDetail["name:1"]} `;
   },
   detailTitleFormatter: ({ name }) => name,
   summaryContentFormatter: (summary, periodLabel) =>
