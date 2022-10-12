@@ -432,3 +432,34 @@ export const loadLastfm: Loader = getDatasetteLoader<
   summaryTitleFormatter: (summary, periodLabel) =>
     `Listened:  ${summary.count}`,
 });
+
+
+const getLanguageLoader= (language:Group):Loader=>
+    getDatasetteLoader<listenDetail,
+        listenSummary>({
+      baseAPI: "https://wakatime.jamesst.one/wakatime.json",
+      baseSQL: `with data as (select
+    unixepoch(date) as date_time,
+    unixepoch(date, '+1 day') as date_time_end,
+    '${language}' as search
+  from
+    languages
+  where
+    ${language} is not null
+  )`,
+      group: language,
+      start: moment("2019-03-01"),
+      end: moment(),
+      detailContentFormatter: (listenDetail) => {
+        return `<img height="34px" alt="${listenDetail.name}" loading="lazy" src="${listenDetail.image[0]["#text"]}"/>${listenDetail.name} ${listenDetail["name:1"]} `;
+      },
+      detailTitleFormatter: ({name}) => name,
+      summaryContentFormatter: (summary, periodLabel) =>
+          `Listened to ${summary.count} songs during ${periodLabel}`,
+      summaryTitleFormatter: (summary, periodLabel) =>
+          `Listened:  ${summary.count}`,
+    })
+export const loadJS = getLanguageLoader("JavaScript")
+export const loadJava = getLanguageLoader("Java")
+export const loadSQL = getLanguageLoader("SQL")
+export const loadTS = getLanguageLoader("TypeScript")

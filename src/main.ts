@@ -10,7 +10,14 @@ import { Graph2dOptions } from "vis-timeline/types";
 import * as moment from "moment-timezone";
 import { Range } from "./range";
 import { clearWaitingRequests } from "./fetcher";
-import { loadRead, loadLastfm } from "./datasetteLoaders";
+import {
+  loadRead,
+  loadLastfm,
+  loadJS,
+  loadJava,
+  loadSQL,
+  loadTS,
+} from "./datasetteLoaders";
 
 const debounce = (func, timeout = 300) => {
   let timer;
@@ -69,6 +76,14 @@ const loadDataForDateRange = async (
       return await loadLastfm(dateRange, search);
     case "Read":
       return await loadRead(dateRange, search);
+    case "JavaScript":
+      return await loadJS(dateRange, search);
+    case "Java":
+      return await loadJava(dateRange, search);
+    case "SQL":
+      return await loadSQL(dateRange, search);
+    case "TypeScript":
+      return await loadTS(dateRange, search);
   }
 };
 
@@ -81,7 +96,14 @@ const end = moment.tz("UTC").endOf("day");
 const start = end.clone().subtract(5, "day").startOf("day");
 const initRange = { start, end };
 
-const groups = ["Music", "Read"] as const;
+const groups = [
+  "Music",
+  "Read",
+  "JavaScript",
+  "TypeScript",
+  "SQL",
+  "Java",
+] as const;
 export type Group = typeof groups[number];
 
 let lines: { line: Timeline | Graph2d; group: Group }[] = [];
