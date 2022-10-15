@@ -17,6 +17,8 @@ import {
   loadJava,
   loadSQL,
   loadTS,
+  loadHeartRate,
+  loadStressLevel,
 } from "./datasetteLoaders";
 
 const debounce = (func, timeout = 300) => {
@@ -55,11 +57,13 @@ export const graphErrorDataItem = (
 const stackGroup = (group: Group): boolean => group !== "Music";
 
 export type GraphDataItem = DataItem & { x: DataItem["start"]; y: number };
+export type GraphTimelineDataItem = {
+  type: "graph";
+  data: GraphDataItem[];
+  graphOptions?: Partial<Graph2dOptions>;
+};
 export type TimelineDataItem =
-  | {
-      type: "graph";
-      data: GraphDataItem[];
-    }
+  | GraphTimelineDataItem
   | {
       type: "timeline";
       data: DataItem[];
@@ -74,6 +78,10 @@ const loadDataForDateRange = async (
   switch (group) {
     case "Music":
       return await loadLastfm(dateRange, search);
+    case "Heart rate":
+      return await loadHeartRate(dateRange, search);
+    case "Stress level":
+      return await loadStressLevel(dateRange, search);
     case "Read":
       return await loadRead(dateRange, search);
     case "JavaScript":
@@ -98,6 +106,8 @@ const initRange = { start, end };
 
 const groups = [
   "Music",
+  "Heart rate",
+  "Stress level",
   "Read",
   "JavaScript",
   "TypeScript",
@@ -111,7 +121,7 @@ let lines: { line: Timeline | Graph2d; group: Group }[] = [];
 const setLineGraph = (
   range: Range,
   container: HTMLElement,
-  line: { type: "graph"; data: GraphDataItem[] },
+  line: GraphTimelineDataItem,
   group: Group
 ) => {
   const graphOptions: Graph2dOptions = {
@@ -119,11 +129,10 @@ const setLineGraph = (
     width: width,
     style: "bar",
 
-    barChart: { /*width: 50,*/ align: "left" },
+    barChart: { align: "left" },
     drawPoints: false,
     dataAxis: {
       icons: false,
-
       // @ts-ignore
       width: 75,
       left: {
@@ -137,7 +146,13 @@ const setLineGraph = (
     end: range.end.toDate(),
     moment: (date) => moment(date).utc(),
   };
-  return new Graph2d(container, line.data, graphOptions);
+  return new Graph2d(
+    container,
+    line.data,
+    line.hasOwnProperty("graphOptions")
+      ? { ...graphOptions, ...line.graphOptions }
+      : graphOptions
+  );
 };
 
 const width = "100%";
