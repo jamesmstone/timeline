@@ -497,10 +497,12 @@ const getGarminLoader = ({
   baseAPI,
   baseSQL,
   group,
+  start,
 }: {
   baseSQL: string;
   baseAPI: string;
   group: Group;
+  start: moment.Moment;
 }): Loader => {
   return getDatasetteLoader<BaseDetail, BaseSummary>({
     baseAPI,
@@ -511,7 +513,7 @@ const getGarminLoader = ({
     chunkInterval: "hour",
     graphOptions: { style: "line" },
     aggregateFunction: "avg",
-    start: moment.unix(1464933600 - 1),
+    start,
     end: moment(),
     detailContentFormatter: (detail, { group }) =>
       group + " " + detail.date_time,
@@ -529,6 +531,7 @@ export const loadHeartRate: Loader = getGarminLoader({
                 hr.heart_rate as value
               from heart_rate hr)`,
   group: "Heart rate",
+  start: moment.unix(1464933600 - 1),
 });
 export const loadStressLevel: Loader = getGarminLoader({
   baseAPI: "https://garmin-stress.jamesst.one/stress_level.json",
@@ -537,6 +540,7 @@ export const loadStressLevel: Loader = getGarminLoader({
                 sl.stress_level as value
               from stress_level sl)`,
   group: "Stress level",
+  start: moment.unix(1506186180-1)
 });
 const getLanguageLoader = (language: Group): Loader =>
   getDatasetteLoader<BaseDetail, BaseSummary>({
