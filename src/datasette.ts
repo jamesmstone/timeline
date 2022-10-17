@@ -34,8 +34,11 @@ export const addTTL = (url: string, { end }: Range): string => {
   providedURL.searchParams.set("_ttl", ttl.toString());
   return providedURL.toString();
 };
-
 export const datasetteFetch = async (url: string) => {
+  const res = await fetcher(url);
+  return await res.json();
+};
+export const datasetteFetchLink = async (url: string) => {
   let json = [];
   while (url !== undefined) {
     const res = await fetcher(url);

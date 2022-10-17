@@ -10,8 +10,12 @@ import {
 import {
   chunkRange,
   expandToDecade,
+  expandToInterval,
+  ExpandToInterval,
   expandToMonth,
+  expandToWeek,
   expandToYear,
+  Interval,
   overDays,
   overWeeks,
   Range,
@@ -19,7 +23,6 @@ import {
 import { DataItem } from "vis-timeline";
 import * as moment from "moment";
 import { addTTL, datasetteFetch } from "./datasette";
-import { Graph2dOptions } from "vis-timeline/types";
 
 type Search = string | undefined;
 
@@ -40,9 +43,12 @@ const loadDay = async <Detail extends BaseDetail, Summary extends BaseSummary>(
     detailTitleFormatter,
     graphOptions,
     detailType = "timeline",
+    expandToInterval: expandInterval = "month",
+    chunkInterval = "month",
   } = options;
-  const loadDateRange = expandToMonth(dateRange);
-  const ranges = chunkRange(loadDateRange, "month");
+  const loadDateRange = expandToInterval(dateRange, expandInterval);
+  const ranges = chunkRange(loadDateRange, chunkInterval);
+  console.log(ranges);
   const data: PromiseSettledResult<Detail[]>[] = await Promise.allSettled(
     ranges.map(async ({ start, end }): Promise<Detail[]> => {
       if (end.isBefore(dataStart) || start.isAfter(dataEnd)) return [];
@@ -346,6 +352,8 @@ type DatasetteOptions<
   Detail extends BaseDetail,
   Summary extends BaseSummary
 > = Partial<{
+  expandToInterval: ExpandToInterval;
+  chunkInterval: Interval;
   detailType: TimelineDataItem["type"];
   graphOptions: GraphTimelineDataItem["graphOptions"];
   aggregateFunction: "count" | "sum" | "avg";
@@ -499,6 +507,8 @@ const getGarminLoader = ({
     baseSQL,
     group,
     detailType: "graph",
+    expandToInterval: "day",
+    chunkInterval: "hour",
     graphOptions: { style: "line" },
     aggregateFunction: "avg",
     start: moment.unix(1464933600 - 1),
