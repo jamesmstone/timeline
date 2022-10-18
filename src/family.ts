@@ -43,12 +43,14 @@ export const loadFamily: Loader = async (
         .includes(search.toLowerCase());
       const hasSearch = search !== undefined;
       if (!matchesSearch && hasSearch) return [];
+      const hasDied = death !== null && death.died;
       const hasDeathDate =
-        death !== null && death.hasOwnProperty("date") && death.date !== null;
+        hasDied && death.hasOwnProperty("date") && death.date !== null;
       const hasBirthDate =
         birth !== null && birth.hasOwnProperty("date") && birth.date !== null;
       const content = fullName;
       const title = fullName;
+      const haveEndDate = hasDeathDate || !hasDied;
       if (hasBirthDate) {
         return [
           {
@@ -57,8 +59,10 @@ export const loadFamily: Loader = async (
             title,
             group: "Family",
             start: moment(birth.date).toDate(),
-            ...(hasDeathDate && {
-              end: moment(death.date).toDate(),
+            ...(haveEndDate && {
+              end: hasDeathDate
+                ? moment(death.date).toDate()
+                : moment().toDate(),
             }),
           },
         ];
