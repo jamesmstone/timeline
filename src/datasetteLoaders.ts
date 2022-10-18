@@ -48,7 +48,6 @@ const loadDay = async <Detail extends BaseDetail, Summary extends BaseSummary>(
   } = options;
   const loadDateRange = expandToInterval(dateRange, expandInterval);
   const ranges = chunkRange(loadDateRange, chunkInterval);
-  console.log(ranges);
   const data: PromiseSettledResult<Detail[]>[] = await Promise.allSettled(
     ranges.map(async ({ start, end }): Promise<Detail[]> => {
       if (end.isBefore(dataStart) || start.isAfter(dataEnd)) return [];

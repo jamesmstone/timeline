@@ -20,6 +20,7 @@ import {
   loadHeartRate,
   loadStressLevel,
 } from "./datasetteLoaders";
+import { loadFamily } from "./family";
 
 const debounce = (func, timeout = 300) => {
   let timer;
@@ -92,6 +93,8 @@ const loadDataForDateRange = async (
       return await loadSQL(dateRange, search);
     case "TypeScript":
       return await loadTS(dateRange, search);
+    case "Family":
+      return await loadFamily(dateRange, search);
   }
 };
 
@@ -113,6 +116,7 @@ const groups = [
   "TypeScript",
   "SQL",
   "Java",
+  "Family",
 ] as const;
 export type Group = typeof groups[number];
 
@@ -162,6 +166,7 @@ const setLineTimeline = (
   line: { type: "timeline"; data: DataItem[] },
   group: Group
 ) => {
+  console.log(group, line.data);
   const timelineOptions: TimelineOptions = {
     stack: stackGroup(group),
     start: range.start.toDate(),
