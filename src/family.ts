@@ -36,33 +36,36 @@ export const loadFamily: Loader = async (
   search
 ): Promise<TimelineDataItem> => {
   const familyJson = await fetchFamily();
-  const data: DataItem[] = familyJson.data.allIndividual.nodes.flatMap((i) => {
-    const hasDeathDate =
-      i.death !== null &&
-      i.death.hasOwnProperty("date") &&
-      i.death.date !== null;
-    const hasBirthDate =
-      i.birth !== null &&
-      i.birth.hasOwnProperty("date") &&
-      i.birth.date !== null;
-    const content = i.name.fullName;
-    const title = i.name.fullName;
-    if (hasBirthDate) {
-      return [
-        {
-          id: i.id,
-          content,
-          title,
-          group: "Family",
-          start: moment(i.birth.date).toDate(),
-          ...(hasDeathDate && {
-            end: moment(i.death.date).toDate(),
-          }),
-        },
-      ];
+  const data: DataItem[] = familyJson.data.allIndividual.nodes.flatMap(
+    ({ id, name: { fullName }, death, birth }) => {
+      const matchesSearch = fullName
+        .toLowerCase()
+        .includes(search.toLowerCase());
+      const hasSearch = search !== undefined;
+      if (!matchesSearch && hasSearch) return [];
+      const hasDeathDate =
+        death !== null && death.hasOwnProperty("date") && death.date !== null;
+      const hasBirthDate =
+        birth !== null && birth.hasOwnProperty("date") && birth.date !== null;
+      const content = fullName;
+      const title = fullName;
+      if (hasBirthDate) {
+        return [
+          {
+            id,
+            content,
+            title,
+            group: "Family",
+            start: moment(birth.date).toDate(),
+            ...(hasDeathDate && {
+              end: moment(death.date).toDate(),
+            }),
+          },
+        ];
+      }
+      return [];
     }
-    return [];
-  });
+  );
   return {
     type: "timeline",
     data,
