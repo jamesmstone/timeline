@@ -108,15 +108,15 @@ const start = end.clone().subtract(5, "day").startOf("day");
 const initRange = { start, end };
 
 const groups = [
-  "Music",
   "Heart rate",
   "Stress level",
+  "Music",
+  "Family",
   "Read",
   "JavaScript",
   "TypeScript",
   "SQL",
   "Java",
-  "Family",
 ] as const;
 export type Group = typeof groups[number];
 
