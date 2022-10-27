@@ -347,6 +347,7 @@ order by
 
 type BaseDetail = { date_time: number; date_time_end?: number; value: number };
 type BaseSummary = { day: string; aggregate: number };
+type AggregateFunction = "count" | "sum" | "avg";
 type DatasetteOptions<
   Detail extends BaseDetail,
   Summary extends BaseSummary
@@ -355,7 +356,7 @@ type DatasetteOptions<
   chunkInterval: Interval;
   detailType: TimelineDataItem["type"];
   graphOptions: GraphTimelineDataItem["graphOptions"];
-  aggregateFunction: "count" | "sum" | "avg";
+  aggregateFunction: AggregateFunction;
   start: moment.Moment;
   end: moment.Moment;
   summaryContentFormatter: (
@@ -497,11 +498,13 @@ const getGarminLoader = ({
   baseSQL,
   group,
   start,
+  aggregateFunction = "avg",
 }: {
   baseSQL: string;
   baseAPI: string;
   group: Group;
   start: moment.Moment;
+  aggregateFunction?: AggregateFunction;
 }): Loader => {
   return getDatasetteLoader<BaseDetail, BaseSummary>({
     baseAPI,
@@ -511,7 +514,7 @@ const getGarminLoader = ({
     expandToInterval: "day",
     chunkInterval: "hour",
     graphOptions: { style: "line" },
-    aggregateFunction: "avg",
+    aggregateFunction,
     start,
     end: moment(),
     detailContentFormatter: (detail, { group }) =>
@@ -539,7 +542,18 @@ export const loadStressLevel: Loader = getGarminLoader({
                 sl.stress_level as value
               from stress_level sl)`,
   group: "Stress level",
-  start: moment.unix(1506186180-1)
+  start: moment.unix(1506186180 - 1),
+});
+
+export const loadSteps: Loader = getGarminLoader({
+  baseAPI: "https://garmin-activity.jamesst.one/activity.json",
+  baseSQL: `with data as (select unix_timestamp as date_time,
+                'steps' as search,
+                case when steps is null then 0 else steps end as value
+              from activity a)`,
+  group: "Steps",
+  start: moment.unix(1506186180 - 1),
+  aggregateFunction: "sum",
 });
 const getLanguageLoader = (language: Group): Loader =>
   getDatasetteLoader<BaseDetail, BaseSummary>({

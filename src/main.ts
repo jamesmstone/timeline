@@ -19,6 +19,7 @@ import {
   loadTS,
   loadHeartRate,
   loadStressLevel,
+  loadSteps,
 } from "./datasetteLoaders";
 import { loadFamily } from "./family";
 
@@ -83,6 +84,8 @@ const loadDataForDateRange = async (
       return await loadHeartRate(dateRange, search);
     case "Stress level":
       return await loadStressLevel(dateRange, search);
+    case "Steps":
+      return await loadSteps(dateRange, search);
     case "Read":
       return await loadRead(dateRange, search);
     case "JavaScript":
@@ -110,6 +113,7 @@ const initRange = { start, end };
 const groups = [
   "Heart rate",
   "Stress level",
+  "Steps",
   "Music",
   "Family",
   "Read",

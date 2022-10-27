@@ -16,7 +16,7 @@ export const overDays = (amount: number, range: Range): boolean =>
   Math.abs(diffDays(range)) > amount;
 export const overAWeek = (range: Range): boolean => overWeeks(1, range);
 
-export type ExpandToInterval = unitOfTime.StartOf
+export type ExpandToInterval = unitOfTime.StartOf;
 export const expandToInterval = (
   { start, end }: Range,
   interval: ExpandToInterval
@@ -25,9 +25,12 @@ export const expandToInterval = (
   end: end.clone().endOf(interval),
 });
 
-export const expandToWeek = (range: Range): Range => expandToInterval(range, 'isoWeek')
-export const expandToMonth = (range: Range): Range => expandToInterval(range, 'month')
-export const expandToYear = (range: Range): Range => expandToInterval(range, 'year')
+export const expandToWeek = (range: Range): Range =>
+  expandToInterval(range, "isoWeek");
+export const expandToMonth = (range: Range): Range =>
+  expandToInterval(range, "month");
+export const expandToYear = (range: Range): Range =>
+  expandToInterval(range, "year");
 
 export const expandToDecade = ({ start, end }: Range): Range => {
   return {
