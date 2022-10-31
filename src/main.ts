@@ -170,7 +170,6 @@ const setLineTimeline = (
   line: { type: "timeline"; data: DataItem[] },
   group: Group
 ) => {
-  console.log(group, line.data);
   const timelineOptions: TimelineOptions = {
     stack: stackGroup(group),
     start: range.start.toDate(),
