@@ -25,8 +25,8 @@ import { addTTL, datasetteFetch } from "./datasette";
 
 type Search = string | undefined;
 
-const fixedEncodeURI = (uri) => encodeURI(uri).replace("+", "%2B");
-const escapeSQLString = (string) => string.replace("'", "''");
+const fixedEncodeURI = (uri) => encodeURI(uri).replaceAll("+", "%2B");
+const escapeSQLString = (string) => string.replaceAll("'", "''");
 
 const loadDay = async <Detail extends BaseDetail, Summary extends BaseSummary>(
   dateRange: Range,
