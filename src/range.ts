@@ -1,5 +1,5 @@
 import * as moment from "moment-timezone";
-import { Moment, unitOfTime } from "moment";
+import { unitOfTime } from "moment";
 
 export type Range = { start: moment.Moment; end: moment.Moment };
 export type Interval = moment.unitOfTime.DurationConstructor;

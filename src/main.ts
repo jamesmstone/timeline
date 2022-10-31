@@ -11,15 +11,15 @@ import * as moment from "moment-timezone";
 import { Range } from "./range";
 import { clearWaitingRequests } from "./fetcher";
 import {
-  loadRead,
-  loadLastfm,
-  loadJS,
-  loadJava,
-  loadSQL,
-  loadTS,
   loadHeartRate,
-  loadStressLevel,
+  loadJava,
+  loadJS,
+  loadLastfm,
+  loadRead,
+  loadSQL,
   loadSteps,
+  loadStressLevel,
+  loadTS,
 } from "./datasetteLoaders";
 import { loadFamily } from "./family";
 

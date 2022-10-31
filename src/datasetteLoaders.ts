@@ -13,7 +13,6 @@ import {
   expandToInterval,
   ExpandToInterval,
   expandToMonth,
-  expandToWeek,
   expandToYear,
   Interval,
   overDays,
