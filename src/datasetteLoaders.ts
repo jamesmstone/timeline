@@ -27,6 +27,7 @@ import { addTTL, datasetteFetch } from "./datasette";
 type Search = string | undefined;
 
 const fixedEncodeURI = (uri) => encodeURI(uri).replace("+", "%2B");
+const escapeSQLString = (string) => string.replace("'", "''");
 
 const loadDay = async <Detail extends BaseDetail, Summary extends BaseSummary>(
   dateRange: Range,
@@ -56,7 +57,7 @@ const loadDay = async <Detail extends BaseDetail, Summary extends BaseSummary>(
 from data
 where date_time < ${end.unix()}
   and date_time >= ${start.unix()}
-  and search like '%${search}%'
+  and search like '%${escapeSQLString(search)}%'
 order by date_time desc`;
       return await datasetteFetch(
         addTTL(fixedEncodeURI(`${baseAPI}?&_shape=array&sql=${sql}`), dateRange)
@@ -157,7 +158,7 @@ from
   data
 where date_time < ${end.unix()}
 and date_time >= ${start.unix()}
-and search like '%${search}%'
+and search like '%${escapeSQLString(search)}%'
 group by
   1
 order by
@@ -230,7 +231,7 @@ from
   data
 where date_time < ${end.unix()}
 and date_time >= ${start.unix()}
-and search like '%${search}%'
+and search like '%${escapeSQLString(search)}%'
 group by
   1
 order by
@@ -303,7 +304,7 @@ from
   data
 where date_time < ${end.unix()}
 and date_time >= ${start.unix()}
-and search like '%${search}%'
+and search like '%${escapeSQLString(search)}%'
 group by
   1
 order by
