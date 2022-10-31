@@ -252,7 +252,7 @@ const run = async () => {
   const onSearch = debounce(async (e) => {
     // @ts-ignore
     const searchValue = e.target.value;
-    for (const { line, group } of lines) {
+    const fileUploads = lines.map(async ({ line, group }) => {
       const window = line.getWindow();
       const newLineData = await loadDataForDateRange(
         group,
@@ -263,7 +263,8 @@ const run = async () => {
         searchValue
       );
       line.setItems(newLineData.data);
-    }
+    });
+    await Promise.all(fileUploads);
   });
 
   search.addEventListener("input", onSearch);
