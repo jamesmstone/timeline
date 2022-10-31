@@ -418,18 +418,27 @@ type readSummary = { day: string; aggregate: number };
 
 export const loadRead: Loader = getDatasetteLoader<readDetail, readSummary>({
   baseAPI: "https://api-read.jamesst.one/readingList.json",
-  baseSQL: `with data as (select unixepoch(date) as date_time,
-                     title || '
-' || description as search,
-    1 as value,
-                  *
+  baseSQL: `with data as (select
+                  unixepoch(date)   as date_time,
+                  title || '
+' || description                    as search,
+                  1                 as value,
+                  title             as title,
+                  case 
+                    when screenshot = '' then image
+                    else screenshot 
+                  end               as image
               from read)`,
   group: "Read",
   start: moment("2012-10-01"),
   end: moment(),
   detailContentFormatter: (detail) => {
     const truncatedTitle = detail.title.slice(0, 30);
-    return `<img height="34px" alt="${detail.title}" loading="lazy" src="${detail.image}"/>${truncatedTitle}`;
+    return `<img height="34px" alt="${
+      detail.title
+    }" loading="lazy" src="https://read.jamesst.one/${encodeURIComponent(
+      detail.image
+    )}"/>${truncatedTitle}`;
   },
   detailTitleFormatter: ({ title }) => title,
   summaryContentFormatter: (summary, periodLabel) =>
