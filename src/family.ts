@@ -71,7 +71,13 @@ export const loadFamily: Loader = async (
     }
   );
   return {
-    type: "timeline",
-    data,
+    result: {
+      type: "timeline",
+      data,
+    },
+    options: {
+      search,
+      dateRange: dateRange,
+    },
   };
 };

@@ -64,19 +64,21 @@ export type GraphTimelineDataItem = {
   data: GraphDataItem[];
   graphOptions?: Partial<Graph2dOptions>;
 };
-export type TimelineDataItem =
-  | GraphTimelineDataItem
-  | {
-      type: "timeline";
-      data: DataItem[];
-    };
+export type TimelineDataItem = {
+  options: { dateRange: Range; search: string };
+  result:
+    | GraphTimelineDataItem
+    | {
+        type: "timeline";
+        data: DataItem[];
+      };
+};
 
 const loadDataForDateRange = async (
   group: Group,
   dateRange: Range,
   search?: string
 ): Promise<TimelineDataItem> => {
-  clearWaitingRequests();
   switch (group) {
     case "Music":
       return await loadLastfm(dateRange, search);
@@ -206,10 +208,27 @@ const setLine = (
   range: Range,
   group: Group
 ): Graph2d | Timeline => {
+  const startsDifferent = !lineData.options.dateRange.start.isSame(range.start);
+  const endsDifferent = !lineData.options.dateRange.end.isSame(range.end);
+  const searchDifferent = lineData.options.search !== search.value;
+  debugger
+  if (startsDifferent) {
+    console.log("startDifferent");
+    return;
+  }
+  if (endsDifferent) {
+    console.log("endsDifferent");
+    return;
+  }
+  if (searchDifferent) {
+    console.log("searchDifferent");
+    return;
+  }
+
   const line =
-    lineData.type === "graph"
-      ? setLineGraph(range, container, lineData, group)
-      : setLineTimeline(range, container, lineData, group);
+    lineData.result.type === "graph"
+      ? setLineGraph(range, container, lineData.result, group)
+      : setLineTimeline(range, container, lineData.result, group);
 
   line.on("rangechanged", async (properties: TimelineWindow) => {
     const newRange = {
@@ -223,7 +242,7 @@ const setLine = (
       // @ts-ignore
       search.value
     );
-    if (newLineData.type !== lineData.type) {
+    if (newLineData.result.type !== lineData.result.type) {
       line.destroy();
       const container = document.getElementById(group);
       container.textContent = null;
@@ -234,7 +253,7 @@ const setLine = (
       });
       return;
     }
-    line.setItems(newLineData.data);
+    line.setItems(newLineData.result.data);
   });
   line.on("rangechange", (properties: TimelineWindow) => {
     updateAllLinesRange(
@@ -250,9 +269,8 @@ const setLine = (
 
 const run = async () => {
   const onSearch = debounce(async (e) => {
-    // @ts-ignore
     const searchValue = e.target.value;
-    const fileUploads = lines.map(async ({ line, group }) => {
+    const loadLines = lines.map(async ({ line, group }) => {
       const window = line.getWindow();
       const newLineData = await loadDataForDateRange(
         group,
@@ -262,9 +280,9 @@ const run = async () => {
         },
         searchValue
       );
-      line.setItems(newLineData.data);
+      line.setItems(newLineData.result.data);
     });
-    await Promise.all(fileUploads);
+    await Promise.all(loadLines);
   });
 
   search.addEventListener("input", onSearch);
@@ -283,18 +301,14 @@ const run = async () => {
     container.appendChild(groupDiv);
   });
 
-  for (const { group, groupDiv } of groupDivs) {
-    const data = await loadDataForDateRange(
-      group,
-      initRange,
-      // @ts-ignore
-      search.value
-    );
+  const loadLines = groupDivs.map(async ({ group, groupDiv }) => {
+    const data = await loadDataForDateRange(group, initRange, search.value);
     lines = [
       ...lines,
       { group, line: setLine(groupDiv, data, initRange, group) },
     ];
-  }
+  });
+  await Promise.all(loadLines);
 
   /* 
   # Datasets

@@ -32,7 +32,7 @@ const loadDay = async <Detail extends BaseDetail, Summary extends BaseSummary>(
   dateRange: Range,
   search: Search = "",
   options: DatasetteOptions<Detail, Summary>
-): Promise<TimelineDataItem> => {
+): Promise<TimelineDataItem["result"]> => {
   const {
     group,
     baseAPI,
@@ -354,7 +354,7 @@ type DatasetteOptions<
 > = Partial<{
   expandToInterval: ExpandToInterval;
   chunkInterval: Interval;
-  detailType: TimelineDataItem["type"];
+  detailType: TimelineDataItem["result"]["type"];
   graphOptions: GraphTimelineDataItem["graphOptions"];
   aggregateFunction: AggregateFunction;
   start: moment.Moment;
@@ -388,18 +388,33 @@ const getDatasetteLoader = <
   const { start, end } = options;
   return async (dateRange, search): Promise<TimelineDataItem> => {
     if (dateRange.end.isBefore(start) || dateRange.start.isAfter(end)) {
-      return { type: "timeline", data: [] };
+      return {
+        options: { dateRange, search },
+        result: { type: "timeline", data: [] },
+      };
     }
     if (overWeeks(52 * 5, dateRange)) {
-      return await loadYearSummary(dateRange, search, options);
+      return {
+        options: { dateRange, search },
+        result: await loadYearSummary(dateRange, search, options),
+      };
     }
     if (overWeeks(52, dateRange)) {
-      return await loadMonthSummary(dateRange, search, options);
+      return {
+        options: { dateRange, search },
+        result: await loadMonthSummary(dateRange, search, options),
+      };
     }
     if (overDays(5, dateRange)) {
-      return loadDaySummary(dateRange, search, options);
+      return {
+        options: { dateRange, search },
+        result: await loadDaySummary(dateRange, search, options),
+      };
     }
-    return await loadDay(dateRange, search, options);
+    return {
+      options: { dateRange, search },
+      result: await loadDay(dateRange, search, options),
+    };
   };
 };
 
