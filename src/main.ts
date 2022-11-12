@@ -211,17 +211,13 @@ const setLine = (
   const startsDifferent = !lineData.options.dateRange.start.isSame(range.start);
   const endsDifferent = !lineData.options.dateRange.end.isSame(range.end);
   const searchDifferent = lineData.options.search !== search.value;
-  debugger
   if (startsDifferent) {
-    console.log("startDifferent");
     return;
   }
   if (endsDifferent) {
-    console.log("endsDifferent");
     return;
   }
   if (searchDifferent) {
-    console.log("searchDifferent");
     return;
   }
 
