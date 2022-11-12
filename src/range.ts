@@ -4,6 +4,14 @@ import { unitOfTime } from "moment";
 export type Range = { start: moment.Moment; end: moment.Moment };
 export type Interval = moment.unitOfTime.DurationConstructor;
 
+export const capNow = (time: moment.Moment) => {
+  const now = moment();
+  if (time.isAfter()) {
+    return now;
+  }
+  return time;
+};
+
 export const diff = (
   unit: moment.unitOfTime.Diff,
   { start, end }: Range

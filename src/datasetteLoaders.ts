@@ -8,6 +8,7 @@ import {
   TimelineDataItem,
 } from "./main";
 import {
+  capNow,
   chunkRange,
   expandToDecade,
   expandToInterval,
@@ -192,7 +193,7 @@ order by
           x: start,
           y: d.aggregate,
           start,
-          end: moment(d.day).add(1, "day").startOf("day").toDate(),
+          end: capNow(moment(d.day).add(1, "day").startOf("day")).toDate(),
         };
       });
     }),
@@ -265,7 +266,7 @@ order by
           x: start,
           y: d.aggregate,
           start,
-          end: moment(d.day).add(1, "month").startOf("month").toDate(),
+          end: capNow(moment(d.day).add(1, "month").startOf("month")).toDate(),
         };
       });
     }),
@@ -338,7 +339,7 @@ order by
           x: start,
           y: d.aggregate,
           start,
-          end: moment(d.day).add(1, "year").startOf("year").toDate(),
+          end: capNow(moment(d.day).add(1, "year").startOf("year")).toDate(),
         };
       });
     }),
