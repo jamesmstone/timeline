@@ -563,7 +563,7 @@ export const loadStressLevel: Loader = getGarminLoader({
   baseAPI: "https://garmin-stress.jamesst.one/stress_level.json",
   baseSQL: `with data as (select unix_timestamp as date_time,
                 'stress_level' as search,
-                sl.stress_level as value
+              case when sl.stress_level <= 0 then null else sl.stress_level end as value
               from stress_level sl)`,
   group: "Stress level",
   start: moment.unix(1506186180 - 1),
