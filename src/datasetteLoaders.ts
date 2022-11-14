@@ -530,27 +530,26 @@ const getGarminLoader = ({
   group: Group;
   start: moment.Moment;
   aggregateFunction?: AggregateFunction;
-}): Loader => {
-  return getDatasetteLoader<BaseDetail, BaseSummary>({
-    baseAPI,
-    baseSQL,
-    group,
-    detailType: "graph",
-    expandToInterval: "day",
-    chunkInterval: "hour",
-    graphOptions: { style: "line" },
-    aggregateFunction,
-    start,
-    end: moment(),
-    detailContentFormatter: (detail, { group }) =>
-      group + " " + detail.date_time,
-    detailTitleFormatter: (detail, { group }) => group + " " + detail.date_time,
-    summaryContentFormatter: (summary, periodLabel) =>
-      `Listened to ${summary.aggregate} songs during ${periodLabel}`,
-    summaryTitleFormatter: (summary, periodLabel) =>
-      `Listened:  ${summary.aggregate}`,
-  });
-};
+}): Loader =>
+    getDatasetteLoader<BaseDetail, BaseSummary>({
+      baseAPI,
+      baseSQL,
+      group,
+      detailType: "graph",
+      expandToInterval: "day",
+      chunkInterval: "hour",
+      graphOptions: {style: "line"},
+      aggregateFunction,
+      start,
+      end: moment(),
+      detailContentFormatter: (detail, {group}) =>
+          group + " " + detail.date_time,
+      detailTitleFormatter: (detail, {group}) => group + " " + detail.date_time,
+      summaryContentFormatter: (summary, periodLabel) =>
+          `Listened to ${summary.aggregate} songs during ${periodLabel}`,
+      summaryTitleFormatter: (summary, periodLabel) =>
+          `Listened:  ${summary.aggregate}`,
+    });
 export const loadHeartRate: Loader = getGarminLoader({
   baseAPI: "https://garmin-heart-rate.jamesst.one/heart_rate.json",
   baseSQL: `with data as (select unix_timestamp as date_time,
