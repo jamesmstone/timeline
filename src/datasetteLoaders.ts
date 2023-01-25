@@ -499,7 +499,7 @@ export const loadLastfm: Loader = getDatasetteLoader<
   listenSummary
 >({
   baseAPI: "https://lastfm.jamesst.one/music.json?_json=image&_json=image:1",
-  baseSQL: `with data as (select date_uts as date_time, date_uts+3*60 as date_time_end,
+  baseSQL: `with data as (select date_uts as date_time, case when avg_estimated_duration is null then date_uts + 5 * 60 else date_uts + avg_estimated_duration end as date_time_end,
                      name || '
 ' || "name:2" as search,
 1 as value,
