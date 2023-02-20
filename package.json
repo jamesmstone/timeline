@@ -10,7 +10,7 @@
     "prettier": "^2.8.3"
   },
   "dependencies": {
-    "@vercel/node": "^2.8.16",
+    "@vercel/node": "^2.9.6",
     "moment": "^2.29.4",
     "moment-timezone": "^0.5.40",
     "p-limit": "^4.0.0",
