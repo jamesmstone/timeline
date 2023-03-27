@@ -15,7 +15,7 @@
     "moment-timezone": "^0.5.40",
     "p-limit": "^4.0.0",
     "p-memoize": "^7.1.1",
-    "vis-data": "^7.1.4",
+    "vis-data": "^7.1.6",
     "vis-timeline": "^7.7.0"
   },
   "scripts": {
