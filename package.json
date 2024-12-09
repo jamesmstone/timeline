@@ -6,7 +6,7 @@
   "license": "None",
   "private": true,
   "devDependencies": {
-    "parcel": "^2.8.3",
+    "parcel": "^2.13.2",
     "prettier": "^2.8.8"
   },
   "dependencies": {
