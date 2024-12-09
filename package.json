@@ -7,7 +7,7 @@
   "private": true,
   "devDependencies": {
     "parcel": "^2.8.3",
-    "prettier": "^2.8.8"
+    "prettier": "^3.4.2"
   },
   "dependencies": {
     "@vercel/node": "^5.0.0",
