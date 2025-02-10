@@ -967,10 +967,10 @@
   resolved "https://registry.yarnpkg.com/@types/parse-json/-/parse-json-4.0.0.tgz#2f8bb441434d163b35fb8ffdccd7138927ffb8c0"
   integrity sha512-//oorEZjL6sbPcKUaCdIGlIUeH26mgzimjBB77G6XRgnDl/L5wOnpyBGRe/Mmf5CVW3PwEBE1NjiMZ/ssFh4wA==
 
-"@vercel/build-utils@9.2.0":
-  version "9.2.0"
-  resolved "https://registry.yarnpkg.com/@vercel/build-utils/-/build-utils-9.2.0.tgz#a85fba7b8e8951e20604ba7e8f049cee31958c23"
-  integrity sha512-e6S+gj+UNsaWH93fRF59HDhNbEypqQlOFJWJcrjrxodmLReXs9lHaYrouPVt3O/3wrQPY1GYKAH7lonQ39Op3Q==
+"@vercel/build-utils@9.2.1":
+  version "9.2.1"
+  resolved "https://registry.yarnpkg.com/@vercel/build-utils/-/build-utils-9.2.1.tgz#98a35ae7b00eff0327d9bc9a20943b1bc94861b3"
+  integrity sha512-dSem9aFudxQ723BeJ/tTCiOnWn4jH3UMYvnlGvb2ke/OBTqLcyCvqKyxnUNWsq++i0x/YewiI/HLnjAwyo2hnA==
 
 "@vercel/error-utils@2.0.3":
   version "2.0.3"
@@ -995,16 +995,16 @@
     picomatch "^4.0.2"
     resolve-from "^5.0.0"
 
-"@vercel/node@^5.1.0":
-  version "5.1.0"
-  resolved "https://registry.yarnpkg.com/@vercel/node/-/node-5.1.0.tgz#04a252c64ca93f1de33c81c7e10ca828d346dc0d"
-  integrity sha512-ZIFs9qtFcS4yb3Nao8dj2tXvVWkvubtmFhEdsVwEbtOmi1tGp7HViGmXIf+dp50qCTdW1YGu6GPeuYcL8V12wg==
+"@vercel/node@^5.1.2":
+  version "5.1.2"
+  resolved "https://registry.yarnpkg.com/@vercel/node/-/node-5.1.2.tgz#e0eda9be492084476838dd797ebac4f575197446"
+  integrity sha512-zoIs8dpx5ScWSgkpxCX2umwt5rPfmqtvdARULXgtBKb8elh3oMKPtQGT9aui6M1d+fr/fewfdTrQJvrDrvdIrQ==
   dependencies:
     "@edge-runtime/node-utils" "2.3.0"
     "@edge-runtime/primitives" "4.1.0"
     "@edge-runtime/vm" "3.2.0"
     "@types/node" "16.18.11"
-    "@vercel/build-utils" "9.2.0"
+    "@vercel/build-utils" "9.2.1"
     "@vercel/error-utils" "2.0.3"
     "@vercel/nft" "0.27.10"
     "@vercel/static-config" "3.0.0"
@@ -1015,8 +1015,6 @@
     esbuild "0.14.47"
     etag "1.8.1"
     node-fetch "2.6.9"
-    path-to-regexp "6.2.1"
-    path-to-regexp-updated "npm:path-to-regexp@6.3.0"
     ts-morph "12.0.0"
     ts-node "10.9.1"
     typescript "4.9.5"
@@ -2193,16 +2191,6 @@ path-scurry@^1.11.1:
   dependencies:
     lru-cache "^10.2.0"
     minipass "^5.0.0 || ^6.0.2 || ^7.0.0"
-
-"path-to-regexp-updated@npm:path-to-regexp@6.3.0":
-  version "6.3.0"
-  resolved "https://registry.yarnpkg.com/path-to-regexp/-/path-to-regexp-6.3.0.tgz#2b6a26a337737a8e1416f9272ed0766b1c0389f4"
-  integrity sha512-Yhpw4T9C6hPpgPeA28us07OJeqZ5EzQTkbfwuhsUg0c237RomFoETJgmp2sa3F/41gfLE6G5cqcYwznmeEeOlQ==
-
-path-to-regexp@6.2.1:
-  version "6.2.1"
-  resolved "https://registry.yarnpkg.com/path-to-regexp/-/path-to-regexp-6.2.1.tgz#d54934d6798eb9e5ef14e7af7962c945906918e5"
-  integrity sha512-JLyh7xT1kizaEvcaXOQwOc2/Yhw6KZOvPf1S8401UyLk86CU79LN3vl7ztXGm/pZ+YjoyAJ4rxmHwbkBXJX+yw==
 
 path-type@^4.0.0:
   version "4.0.0"
