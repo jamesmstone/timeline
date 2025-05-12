@@ -16,7 +16,7 @@
     "p-limit": "^6.2.0",
     "p-memoize": "^7.1.1",
     "vis-data": "^7.1.9",
-    "vis-timeline": "^7.7.3"
+    "vis-timeline": "^7.7.4"
   },
   "scripts": {
     "start": "parcel",
