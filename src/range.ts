@@ -14,7 +14,7 @@ export const capNow = (time: moment.Moment) => {
 
 export const diff = (
   unit: moment.unitOfTime.Diff,
-  { start, end }: Range
+  { start, end }: Range,
 ): number => start.diff(end, unit, true);
 const diffWeeks = (range: Range): number => diff("week", range);
 const diffDays = (range: Range): number => diff("day", range);
@@ -27,7 +27,7 @@ export const overAWeek = (range: Range): boolean => overWeeks(1, range);
 export type ExpandToInterval = unitOfTime.StartOf;
 export const expandToInterval = (
   { start, end }: Range,
-  interval: ExpandToInterval
+  interval: ExpandToInterval,
 ): Range => ({
   start: start.clone().startOf(interval),
   end: end.clone().endOf(interval),
@@ -74,12 +74,12 @@ export const chunkRange = (range: Range, interval: Interval): Range[] => {
   for (
     let cur: Range = createRange(
       nextInterval(first.start.clone(), interval),
-      nextInterval(first.end.clone(), interval)
+      nextInterval(first.end.clone(), interval),
     );
     isRangeBeforeRange(cur, last);
     cur = createRange(
       nextInterval(cur.start.clone(), interval),
-      nextInterval(cur.end.clone(), interval)
+      nextInterval(cur.end.clone(), interval),
     )
   ) {
     middle.push(cur);

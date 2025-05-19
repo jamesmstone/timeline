@@ -25,7 +25,7 @@ let cachedFamilyJson: FamilyJSON | null = null;
 const fetchFamily = async (): Promise<FamilyJSON> => {
   if (cachedFamilyJson !== null) return cachedFamilyJson;
   const familyRes = await fetcher(
-    "https://family.jamesst.one/individualsAPI.json"
+    "https://family.jamesst.one/individualsAPI.json",
   );
 
   cachedFamilyJson = await familyRes.json();
@@ -33,7 +33,7 @@ const fetchFamily = async (): Promise<FamilyJSON> => {
 };
 export const loadFamily: Loader = async (
   dateRange,
-  search
+  search,
 ): Promise<TimelineDataItem> => {
   const familyJson = await fetchFamily();
   const data: DataItem[] = familyJson.data.allIndividual.nodes.flatMap(
@@ -68,7 +68,7 @@ export const loadFamily: Loader = async (
         ];
       }
       return [];
-    }
+    },
   );
   return {
     result: {

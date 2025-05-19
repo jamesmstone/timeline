@@ -35,7 +35,7 @@ const debounce = (func, timeout = 300) => {
 
 export const errorDataItem = (
   { group, title, content }: Pick<DataItem, "group" | "title" | "content">,
-  { start, end }: Range
+  { start, end }: Range,
 ): DataItem => ({
   group,
   content,
@@ -45,7 +45,7 @@ export const errorDataItem = (
 });
 export const graphErrorDataItem = (
   { group, title, content }: Pick<DataItem, "group" | "title" | "content">,
-  { start, end }: Range
+  { start, end }: Range,
 ): GraphDataItem => ({
   group,
   content,
@@ -77,7 +77,7 @@ export type TimelineDataItem = {
 const loadDataForDateRange = async (
   group: Group,
   dateRange: Range,
-  search?: string
+  search?: string,
 ): Promise<TimelineDataItem> => {
   switch (group) {
     case "Music":
@@ -105,7 +105,7 @@ const loadDataForDateRange = async (
 
 export type Loader = (
   dateRange: Range,
-  search: string | undefined
+  search: string | undefined,
 ) => Promise<TimelineDataItem>;
 
 const end = moment.tz("UTC").endOf("day");
@@ -124,7 +124,7 @@ const groups = [
   "SQL",
   "Java",
 ] as const;
-export type Group = typeof groups[number];
+export type Group = (typeof groups)[number];
 
 let lines: { line: Timeline | Graph2d; group: Group }[] = [];
 
@@ -132,7 +132,7 @@ const setLineGraph = (
   range: Range,
   container: HTMLElement,
   line: GraphTimelineDataItem,
-  group: Group
+  group: Group,
 ) => {
   const graphOptions: Graph2dOptions = {
     graphHeight: 150,
@@ -161,7 +161,7 @@ const setLineGraph = (
     line.data,
     line.hasOwnProperty("graphOptions")
       ? { ...graphOptions, ...line.graphOptions }
-      : graphOptions
+      : graphOptions,
   );
 };
 
@@ -170,7 +170,7 @@ const setLineTimeline = (
   range: Range,
   container: HTMLElement,
   line: { type: "timeline"; data: DataItem[] },
-  group: Group
+  group: Group,
 ) => {
   const timelineOptions: TimelineOptions = {
     stack: stackGroup(group),
@@ -184,13 +184,13 @@ const setLineTimeline = (
     container,
     line.data,
     [{ id: group, content: "" }],
-    timelineOptions
+    timelineOptions,
   );
 };
 
 const updateAllLinesRange = async (
   newRange: Range,
-  except: Group
+  except: Group,
 ): Promise<void> => {
   for (const { line, group } of lines) {
     if (group !== except) {
@@ -206,7 +206,7 @@ const setLine = (
   container: HTMLElement,
   lineData: TimelineDataItem,
   range: Range,
-  group: Group
+  group: Group,
 ): Graph2d | Timeline => {
   const startsDifferent = !lineData.options.dateRange.start.isSame(range.start);
   const endsDifferent = !lineData.options.dateRange.end.isSame(range.end);
@@ -236,7 +236,7 @@ const setLine = (
       group,
       newRange,
       // @ts-ignore
-      search.value
+      search.value,
     );
     if (newLineData.result.type !== lineData.result.type) {
       line.destroy();
@@ -257,7 +257,7 @@ const setLine = (
         start: moment.tz(properties.start, "UTC"),
         end: moment.tz(properties.end, "UTC"),
       },
-      group
+      group,
     ).then(() => {});
   });
   return line;
@@ -274,7 +274,7 @@ const run = async () => {
           start: moment(window.start),
           end: moment(window.end),
         },
-        searchValue
+        searchValue,
       );
       line.setItems(newLineData.result.data);
     });
@@ -291,7 +291,7 @@ const run = async () => {
       groupDiv.setAttribute("id", group);
       groupDiv.setAttribute("class", "line");
       return { group, groupDiv };
-    }
+    },
   );
   groupDivs.forEach(({ groupDiv }) => {
     container.appendChild(groupDiv);
