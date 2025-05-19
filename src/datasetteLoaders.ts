@@ -26,13 +26,24 @@ import { addTTL, datasetteFetch } from "./datasette";
 
 type Search = string | undefined;
 
+type DateFormat = "ISO" | "unix_epoch";
+
+const dayDateFormatter = (
+  date: moment.Moment,
+  dateFormat: DateFormat,
+): string => {
+  if (dateFormat === "ISO") {
+    return "'" + date.format("YYYY-MM-DD HH:mm:ss") + "'";
+  }
+  return date.unix().toString();
+};
+
 const fixedEncodeURI = (uri) => encodeURI(uri).replaceAll("+", "%2B");
 const escapeSQLString = (string) => string.replaceAll("'", "''");
-
 const loadDay = async <Detail extends BaseDetail, Summary extends BaseSummary>(
   dateRange: Range,
   search: Search = "",
-  options: DatasetteOptions<Detail, Summary>
+  options: DatasetteOptions<Detail, Summary>,
 ): Promise<TimelineDataItem["result"]> => {
   const {
     group,
@@ -46,6 +57,7 @@ const loadDay = async <Detail extends BaseDetail, Summary extends BaseSummary>(
     detailType = "timeline",
     expandToInterval: expandInterval = "month",
     chunkInterval = "month",
+    dateFormat = "unix_epoch",
   } = options;
   const loadDateRange = expandToInterval(dateRange, expandInterval);
   const ranges = chunkRange(loadDateRange, chunkInterval);
@@ -55,14 +67,17 @@ const loadDay = async <Detail extends BaseDetail, Summary extends BaseSummary>(
 
       const sql = `${baseSQL} select *
 from data
-where date_time < ${end.unix()}
-  and date_time >= ${start.unix()}
+where date_time < ${dayDateFormatter(end, dateFormat)}
+  and date_time >= ${dayDateFormatter(start, dateFormat)}
   and search like '%${escapeSQLString(search)}%'
 order by date_time desc`;
       return await datasetteFetch(
-        addTTL(fixedEncodeURI(`${baseAPI}?&_shape=array&sql=${sql}`), dateRange)
+        addTTL(
+          fixedEncodeURI(`${baseAPI}?&_shape=array&sql=${sql}`),
+          dateRange,
+        ),
       );
-    })
+    }),
   );
   if (detailType === "timeline") {
     return {
@@ -76,7 +91,7 @@ order by date_time desc`;
                 content: d.reason,
                 title: "Loading Error",
               },
-              ranges[i]
+              ranges[i],
             ),
           ];
         }
@@ -85,9 +100,15 @@ order by date_time desc`;
             group: group,
             content: detailContentFormatter(detail, options),
             title: detailTitleFormatter(detail, options),
-            start: moment.unix(detail.date_time).toDate(),
+            start:
+              dateFormat === "ISO"
+                ? moment(detail.date_time).toDate()
+                : moment.unix(detail.date_time).toDate(),
             ...(detail.hasOwnProperty("date_time_end") && {
-              end: moment.unix(detail.date_time_end).toDate(),
+              end:
+                dateFormat === "ISO"
+                  ? moment(detail.date_time_end).toDate()
+                  : moment.unix(detail.date_time_end).toDate(),
             }),
           };
         });
@@ -106,12 +127,15 @@ order by date_time desc`;
               content: d.reason,
               title: "Loading Error",
             },
-            ranges[i]
+            ranges[i],
           ),
         ];
       }
       return d.value.map((detail): GraphDataItem => {
-        const start = moment.unix(detail.date_time).toDate();
+        const start =
+          dateFormat === "ISO"
+            ? moment(detail.date_time).toDate()
+            : moment.unix(detail.date_time).toDate();
         return {
           x: start,
           y: detail.value,
@@ -120,7 +144,10 @@ order by date_time desc`;
           title: detailTitleFormatter(detail, options),
           start,
           ...(detail.hasOwnProperty("date_time_end") && {
-            end: moment.unix(detail.date_time_end).toDate(),
+            end:
+              dateFormat === "ISO"
+                ? moment(detail.date_time_end).toDate()
+                : moment.unix(detail.date_time_end).toDate(),
           }),
         };
       });
@@ -129,11 +156,11 @@ order by date_time desc`;
 };
 const loadDaySummary = async <
   Detail extends BaseDetail,
-  Summary extends BaseSummary
+  Summary extends BaseSummary,
 >(
   dateRange: Range,
   search: Search = "",
-  options: DatasetteOptions<Detail, Summary>
+  options: DatasetteOptions<Detail, Summary>,
 ): Promise<GraphTimelineDataItem> => {
   const {
     group,
@@ -145,6 +172,7 @@ const loadDaySummary = async <
     summaryTitleFormatter,
     aggregateFunction = "count",
     graphOptions,
+    dateFormat = "unix_epoch",
   } = options;
   const loadDateRange = expandToMonth(dateRange);
   const ranges = chunkRange(loadDateRange, "month");
@@ -152,12 +180,12 @@ const loadDaySummary = async <
     ranges.map(async ({ start, end }): Promise<Summary[]> => {
       if (end.isBefore(dataStart) || start.isAfter(dataEnd)) return [];
       const sql = `${baseSQL} select
-  strftime('%Y-%m-%d', datetime(date_time, 'unixepoch')) AS day,
+  strftime('%Y-%m-%d', ${dateFormat === "unix_epoch" ? "datetime(date_time, 'unixepoch')" : "date_time"}  ) AS day,
   ${aggregateFunction}(value) AS aggregate
 from
   data
-where date_time < ${end.unix()}
-and date_time >= ${start.unix()}
+where date_time < ${dayDateFormatter(end, dateFormat)}
+and date_time >= ${dayDateFormatter(start, dateFormat)}
 and search like '%${escapeSQLString(search)}%'
 group by
   1
@@ -165,7 +193,7 @@ order by
   1 desc`;
       const url = `${baseAPI}?&_shape=array&sql=${sql}`;
       return await datasetteFetch(addTTL(fixedEncodeURI(url), dateRange));
-    })
+    }),
   );
   return {
     type: "graph",
@@ -179,7 +207,7 @@ order by
               content: d.reason,
               title: "Loading Error",
             },
-            ranges[i]
+            ranges[i],
           ),
         ];
       }
@@ -202,11 +230,11 @@ order by
 
 const loadMonthSummary = async <
   Detail extends BaseDetail,
-  Summary extends BaseSummary
+  Summary extends BaseSummary,
 >(
   dateRange: Range,
   search: Search = "",
-  options: DatasetteOptions<Detail, Summary>
+  options: DatasetteOptions<Detail, Summary>,
 ): Promise<GraphTimelineDataItem> => {
   const {
     group,
@@ -218,6 +246,7 @@ const loadMonthSummary = async <
     summaryTitleFormatter,
     aggregateFunction = "count",
     graphOptions,
+    dateFormat = "unix_epoch",
   } = options;
   const loadDateRange = expandToYear(dateRange);
   const ranges = chunkRange(loadDateRange, "year");
@@ -225,12 +254,12 @@ const loadMonthSummary = async <
     ranges.map(async ({ start, end }): Promise<Summary[]> => {
       if (end.isBefore(dataStart) || start.isAfter(dataEnd)) return [];
       const sql = `${baseSQL}select
-  strftime('%Y-%m-01',datetime(date_time, 'unixepoch')) AS day,
+  strftime('%Y-%m-01', ${dateFormat === "unix_epoch" ? "datetime(date_time, 'unixepoch')" : "date_time"}  ) AS day,
   ${aggregateFunction}(value) AS aggregate
 from
   data
-where date_time < ${end.unix()}
-and date_time >= ${start.unix()}
+ where date_time < ${dayDateFormatter(end, dateFormat)}
+   and date_time >= ${dayDateFormatter(start, dateFormat)}
 and search like '%${escapeSQLString(search)}%'
 group by
   1
@@ -238,7 +267,7 @@ order by
   1 desc`;
       const url = `${baseAPI}?&_shape=array&sql=${sql}`;
       return await datasetteFetch(addTTL(fixedEncodeURI(url), dateRange));
-    })
+    }),
   );
   return {
     type: "graph",
@@ -252,7 +281,7 @@ order by
               content: d.reason,
               title: "Loading Error",
             },
-            ranges[i]
+            ranges[i],
           ),
         ];
       }
@@ -275,11 +304,11 @@ order by
 
 const loadYearSummary = async <
   Detail extends BaseDetail,
-  Summary extends BaseSummary
+  Summary extends BaseSummary,
 >(
   dateRange: Range,
   search: Search = "",
-  options: DatasetteOptions<Detail, Summary>
+  options: DatasetteOptions<Detail, Summary>,
 ): Promise<GraphTimelineDataItem> => {
   const {
     group,
@@ -291,6 +320,7 @@ const loadYearSummary = async <
     summaryTitleFormatter,
     aggregateFunction = "count",
     graphOptions,
+    dateFormat = "unix_epoch",
   } = options;
   const loadDateRange = expandToDecade(dateRange);
   const ranges = chunkRange(loadDateRange, "year");
@@ -298,12 +328,12 @@ const loadYearSummary = async <
     ranges.map(async ({ start, end }): Promise<Summary[]> => {
       if (end.isBefore(dataStart) || start.isAfter(dataEnd)) return [];
       const sql = `${baseSQL} select
-  strftime('%Y-01-01',datetime(date_time, 'unixepoch')) AS day,
+  strftime('%Y-01-01', ${dateFormat === "unix_epoch" ? "datetime(date_time, 'unixepoch')" : "date_time"}  ) AS day,
   ${aggregateFunction}(value) AS aggregate
 from
   data
-where date_time < ${end.unix()}
-and date_time >= ${start.unix()}
+where date_time < ${dayDateFormatter(end, dateFormat)}
+  and date_time >= ${dayDateFormatter(start, dateFormat)}
 and search like '%${escapeSQLString(search)}%'
 group by
   1
@@ -311,7 +341,7 @@ order by
   1 desc`;
       const url = `${baseAPI}?&_shape=array&sql=${sql}`;
       return await datasetteFetch(addTTL(fixedEncodeURI(url), dateRange));
-    })
+    }),
   );
   return {
     type: "graph",
@@ -325,7 +355,7 @@ order by
               content: d.reason,
               title: "Loading Error",
             },
-            ranges[i]
+            ranges[i],
           ),
         ];
       }
@@ -351,8 +381,9 @@ type BaseSummary = { day: string; aggregate: number };
 type AggregateFunction = "count" | "sum" | "avg";
 type DatasetteOptions<
   Detail extends BaseDetail,
-  Summary extends BaseSummary
+  Summary extends BaseSummary,
 > = Partial<{
+  dateFormat: DateFormat;
   expandToInterval: ExpandToInterval;
   chunkInterval: Interval;
   detailType: TimelineDataItem["result"]["type"];
@@ -363,28 +394,28 @@ type DatasetteOptions<
   summaryContentFormatter: (
     summary: Summary,
     periodLabel: string,
-    options: DatasetteOptions<Detail, Summary>
+    options: DatasetteOptions<Detail, Summary>,
   ) => GraphDataItem["content"];
   summaryTitleFormatter: (
     summary: Summary,
     periodLabel: string,
-    options: DatasetteOptions<Detail, Summary>
+    options: DatasetteOptions<Detail, Summary>,
   ) => GraphDataItem["title"];
   detailContentFormatter: (
     detail: Detail,
-    options: DatasetteOptions<Detail, Summary>
+    options: DatasetteOptions<Detail, Summary>,
   ) => DataItem["content"];
   detailTitleFormatter: (
     detail: Detail,
-    options: DatasetteOptions<Detail, Summary>
+    options: DatasetteOptions<Detail, Summary>,
   ) => DataItem["title"];
 }> & { baseAPI: string; baseSQL: string; group: Group };
 
 const getDatasetteLoader = <
   Detail extends BaseDetail,
-  Summary extends BaseSummary
+  Summary extends BaseSummary,
 >(
-  options: DatasetteOptions<Detail, Summary>
+  options: DatasetteOptions<Detail, Summary>,
 ): Loader => {
   const { start, end } = options;
   return async (dateRange, search): Promise<TimelineDataItem> => {
@@ -453,7 +484,7 @@ export const loadRead: Loader = getDatasetteLoader<readDetail, readSummary>({
     return `<img height="34px" alt="${
       detail.title
     }" loading="lazy" src="https://read.jamesst.one/${encodeURIComponent(
-      detail.image
+      detail.image,
     )}"/>${truncatedTitle}`;
   },
   detailTitleFormatter: ({ title }) => title,
@@ -522,6 +553,7 @@ const getGarminLoader = ({
   baseAPI,
   baseSQL,
   group,
+  dateFormat,
   start,
   aggregateFunction = "avg",
 }: {
@@ -530,53 +562,69 @@ const getGarminLoader = ({
   group: Group;
   start: moment.Moment;
   aggregateFunction?: AggregateFunction;
+} & {
+  dateFormat?: DatasetteOptions<BaseDetail, BaseSummary>["dateFormat"];
 }): Loader =>
-    getDatasetteLoader<BaseDetail, BaseSummary>({
-      baseAPI,
-      baseSQL,
-      group,
-      detailType: "graph",
-      expandToInterval: "day",
-      chunkInterval: "hour",
-      graphOptions: {style: "line"},
-      aggregateFunction,
-      start,
-      end: moment(),
-      detailContentFormatter: (detail, {group}) =>
-          group + " " + detail.date_time,
-      detailTitleFormatter: (detail, {group}) => group + " " + detail.date_time,
-      summaryContentFormatter: (summary, periodLabel) =>
-          `Listened to ${summary.aggregate} songs during ${periodLabel}`,
-      summaryTitleFormatter: (summary, periodLabel) =>
-          `Listened:  ${summary.aggregate}`,
-    });
+  getDatasetteLoader<BaseDetail, BaseSummary>({
+    baseAPI,
+    baseSQL,
+    dateFormat,
+    group,
+    detailType: "graph",
+    expandToInterval: "day",
+    chunkInterval: "hour",
+    graphOptions: { style: "line" },
+    aggregateFunction,
+    start,
+    end: moment(),
+    detailContentFormatter: (detail, { group }) =>
+      group + " " + detail.date_time,
+    detailTitleFormatter: (detail, { group }) => group + " " + detail.date_time,
+    summaryContentFormatter: (summary, periodLabel) =>
+      `Listened to ${summary.aggregate} songs during ${periodLabel}`,
+    summaryTitleFormatter: (summary, periodLabel) =>
+      `Listened:  ${summary.aggregate}`,
+  });
 export const loadHeartRate: Loader = getGarminLoader({
-  baseAPI: "https://garmin-heart-rate.jamesst.one/heart_rate.json",
-  baseSQL: `with data as (select unix_timestamp as date_time,
+  dateFormat: "ISO",
+  baseAPI: "https://garmin.jamesst.one/garmin_monitoring.json",
+  baseSQL: `with data as (select timestamp as date_time,
                 'heart_rate' as search,
                 hr.heart_rate as value
-              from heart_rate hr)`,
+              from monitoring_hr hr)`,
   group: "Heart rate",
   start: moment.unix(1464933600 - 1),
 });
 export const loadStressLevel: Loader = getGarminLoader({
-  baseAPI: "https://garmin-stress.jamesst.one/stress_level.json",
-  baseSQL: `with data as (select unix_timestamp as date_time,
-                'stress_level' as search,
-              case when sl.stress_level <= 0 then null else sl.stress_level end as value
-              from stress_level sl)`,
+  dateFormat: "ISO",
+  baseAPI: "https://garmin.jamesst.one/garmin.json",
+  baseSQL: `with data as (select
+                            timestamp as date_time,
+                            'stress_level' as search,
+                            case
+                              when stress <= 0 then null
+                              else stress
+                              end as value
+                          from
+                            stress)`,
   group: "Stress level",
   start: moment.unix(1506186180 - 1),
 });
 
 export const loadSteps: Loader = getGarminLoader({
-  baseAPI: "https://garmin-activity.jamesst.one/activity.json",
-  baseSQL: `with data as (select unix_timestamp as date_time,
-                'steps' as search,
-                case when steps is null then 0 else steps end as value
-              from activity a)`,
+  baseAPI: "https://garmin.jamesst.one/garmin_monitoring.json",
+  baseSQL: `with data as (select
+                            timestamp as date_time,
+                            'steps' as search,
+                            case
+                              when steps is null then 0
+                              else steps
+                              end as value
+                          from
+                            monitoring)`,
   group: "Steps",
   start: moment.unix(1506186180 - 1),
+  dateFormat: "ISO",
   aggregateFunction: "sum",
 });
 const getLanguageLoader = (language: Group): Loader =>
