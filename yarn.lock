@@ -1322,10 +1322,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vercel/build-utils@npm:10.5.1":
-  version: 10.5.1
-  resolution: "@vercel/build-utils@npm:10.5.1"
-  checksum: 10c0/4975af0f1af0d9ad9485b1b405fb37e6e6a1a058a98a06140556e4e1752da346b79ea34e1f46737477d39dfd967091a44ef5de09146972b64b4d15f61b4fdce6
+"@vercel/build-utils@npm:10.6.1":
+  version: 10.6.1
+  resolution: "@vercel/build-utils@npm:10.6.1"
+  checksum: 10c0/59747333c075fa49b24acd74601114faa4a7ab9aa82404f060f92e843cebb14a4c453e2b066adc7bcc58d4f8f420fdb18edc5c811cfea04afb46687554cccb9e
   languageName: node
   linkType: hard
 
@@ -1358,18 +1358,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vercel/node@npm:^5.1.16":
-  version: 5.1.16
-  resolution: "@vercel/node@npm:5.1.16"
+"@vercel/node@npm:^5.2.2":
+  version: 5.2.2
+  resolution: "@vercel/node@npm:5.2.2"
   dependencies:
     "@edge-runtime/node-utils": "npm:2.3.0"
     "@edge-runtime/primitives": "npm:4.1.0"
     "@edge-runtime/vm": "npm:3.2.0"
     "@types/node": "npm:16.18.11"
-    "@vercel/build-utils": "npm:10.5.1"
+    "@vercel/build-utils": "npm:10.6.1"
     "@vercel/error-utils": "npm:2.0.3"
     "@vercel/nft": "npm:0.29.2"
-    "@vercel/static-config": "npm:3.0.0"
+    "@vercel/static-config": "npm:3.1.1"
     async-listen: "npm:3.0.0"
     cjs-module-lexer: "npm:1.2.3"
     edge-runtime: "npm:2.5.9"
@@ -1383,18 +1383,18 @@ __metadata:
     ts-node: "npm:10.9.1"
     typescript: "npm:4.9.5"
     undici: "npm:5.28.4"
-  checksum: 10c0/9390001f6caf30e49b1a46eab59caccbdc55f67ae5a1ddfc4ad66046965402d83e723e7b21f6700085699dab3de4b434ff45a960e0e8211fd74fdd52f17a0f77
+  checksum: 10c0/c5c75cd1fe70b8ab165a1cc58525ef2e363f4e6a0440135e8b3c37429303d0e16aae62737564b6300772d6c138d9edb8b19bee6300b0302ddef0f36a8a93b49e
   languageName: node
   linkType: hard
 
-"@vercel/static-config@npm:3.0.0":
-  version: 3.0.0
-  resolution: "@vercel/static-config@npm:3.0.0"
+"@vercel/static-config@npm:3.1.1":
+  version: 3.1.1
+  resolution: "@vercel/static-config@npm:3.1.1"
   dependencies:
     ajv: "npm:8.6.3"
     json-schema-to-ts: "npm:1.6.4"
     ts-morph: "npm:12.0.0"
-  checksum: 10c0/a25167bcdfc8d65057f2fef1a22908f055deacaab441979628cb62ea3ceac13439c2df418c5a4b28f5178545e68666c36caae298a0b9daead78f469004823844
+  checksum: 10c0/3a26c6da0ada2e2c478257d3f19a4592c61367f84b452afa9038f19aa8ef6c991a99768b91e5be9a2c4635070703a59fee75ef47bc8eb43b20d3ec77721fb49b
   languageName: node
   linkType: hard
 
@@ -3379,7 +3379,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "timeline@workspace:."
   dependencies:
-    "@vercel/node": "npm:^5.1.16"
+    "@vercel/node": "npm:^5.2.2"
     moment: "npm:^2.30.1"
     moment-timezone: "npm:^0.6.0"
     p-limit: "npm:^6.2.0"
