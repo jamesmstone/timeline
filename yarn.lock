@@ -1358,9 +1358,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vercel/node@npm:^5.3.10":
-  version: 5.3.10
-  resolution: "@vercel/node@npm:5.3.10"
+"@vercel/node@npm:^5.3.11":
+  version: 5.3.11
+  resolution: "@vercel/node@npm:5.3.11"
   dependencies:
     "@edge-runtime/node-utils": 2.3.0
     "@edge-runtime/primitives": 4.1.0
@@ -1383,7 +1383,7 @@ __metadata:
     ts-node: 10.9.1
     typescript: 4.9.5
     undici: 5.28.4
-  checksum: 8/cf40aca9ab8f35daafe803c8c6523dfb7ec591a6c299736598c1374bc31cdef866b6d0bcb6bc3f8c36c6a9547d45aeb101044c5dd8460fafbe9e5119f3d7a8e3
+  checksum: 8/77748b51cc2cc1f2469fd66b98d1a2996b570b6d3377a42b9a776c1b45039874aaeb1cfbe2b108a7c0f47109b1130999a6c87fee8ce83dd96ed4a1ca7676fc05
   languageName: node
   linkType: hard
 
@@ -3379,7 +3379,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "timeline@workspace:."
   dependencies:
-    "@vercel/node": ^5.3.10
+    "@vercel/node": ^5.3.11
     moment: ^2.30.1
     moment-timezone: ^0.6.0
     p-limit: ^6.2.0
