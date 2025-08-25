@@ -3387,7 +3387,7 @@ __metadata:
     parcel: ^2.15.4
     prettier: ^3.6.2
     vis-data: ^8.0.1
-    vis-timeline: ^8.2.1
+    vis-timeline: ^8.3.0
   languageName: unknown
   linkType: soft
 
@@ -3587,9 +3587,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vis-timeline@npm:^8.2.1":
-  version: 8.2.1
-  resolution: "vis-timeline@npm:8.2.1"
+"vis-timeline@npm:^8.3.0":
+  version: 8.3.0
+  resolution: "vis-timeline@npm:8.3.0"
   peerDependencies:
     "@egjs/hammerjs": ^2.0.0
     component-emitter: ^1.3.0
@@ -3600,7 +3600,7 @@ __metadata:
     vis-data: ">=8.0.0"
     vis-util: ">=6.0.0"
     xss: ^1.0.0
-  checksum: 9c96faf22fd2a3c4efeb6ba269e09c0e2423044b3272e11a375c516f84c18dfa3fc467e5881df0f0aac74d0e860787698dd841d4b5981e1d7b237db7e5cfdd8d
+  checksum: faf1d8e3d639ebdcdf65dddd5830681b5d91724668472f93e11826ea79fe5b623d065a36ae3dfb73eaff5e68b0080dbb282cd8db877c073635906f4c1a94344d
   languageName: node
   linkType: hard
 
