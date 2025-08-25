@@ -2932,12 +2932,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"p-limit@npm:^6.2.0":
-  version: 6.2.0
-  resolution: "p-limit@npm:6.2.0"
+"p-limit@npm:^7.1.0":
+  version: 7.1.0
+  resolution: "p-limit@npm:7.1.0"
   dependencies:
-    yocto-queue: "npm:^1.1.1"
-  checksum: 10c0/448bf55a1776ca1444594d53b3c731e68cdca00d44a6c8df06a2f6e506d5bbd540ebb57b05280f8c8bff992a630ed782a69612473f769a7473495d19e2270166
+    yocto-queue: ^1.2.1
+  checksum: 447308f23ea84b0cb1499deef9536c6ad1082aa53bd3cbd47a820dbface112c83575c63cf7c977ece19db4636fb49a544fecde1594fed4f1205d0e07d71ddb91
   languageName: node
   linkType: hard
 
@@ -3382,7 +3382,7 @@ __metadata:
     "@vercel/node": ^5.3.10
     moment: ^2.30.1
     moment-timezone: ^0.6.0
-    p-limit: ^6.2.0
+    p-limit: ^7.1.0
     p-memoize: ^8.0.0
     parcel: ^2.15.4
     prettier: ^3.6.2
@@ -3693,9 +3693,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yocto-queue@npm:^1.1.1":
-  version: 1.1.1
-  resolution: "yocto-queue@npm:1.1.1"
-  checksum: 10c0/cb287fe5e6acfa82690acb43c283de34e945c571a78a939774f6eaba7c285bacdf6c90fbc16ce530060863984c906d2b4c6ceb069c94d1e0a06d5f2b458e2a92
+"yocto-queue@npm:^1.2.1":
+  version: 1.2.1
+  resolution: "yocto-queue@npm:1.2.1"
+  checksum: 0843d6c2c0558e5c06e98edf9c17942f25c769e21b519303a5c2adefd5b738c9b2054204dc856ac0cd9d134b1bc27d928ce84fd23c9e2423b7e013d5a6f50577
   languageName: node
   linkType: hard
