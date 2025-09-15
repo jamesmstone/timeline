@@ -3403,7 +3403,7 @@ __metadata:
     p-memoize: ^8.0.0
     parcel: ^2.15.4
     prettier: ^3.6.2
-    vis-data: ^8.0.1
+    vis-data: ^8.0.3
     vis-timeline: ^8.3.0
   languageName: unknown
   linkType: soft
@@ -3594,13 +3594,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vis-data@npm:^8.0.1":
-  version: 8.0.1
-  resolution: "vis-data@npm:8.0.1"
+"vis-data@npm:^8.0.3":
+  version: 8.0.3
+  resolution: "vis-data@npm:8.0.3"
   peerDependencies:
-    uuid: ^3.4.0 || ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0
+    uuid: ^3.4.0 || ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0 || ^13.0.0
     vis-util: ">=6.0.0"
-  checksum: a0aed502eb30e881c894fcd6499c102b835e18522320020d8f84575b84fa3265fba7fc28b50702968309459f6cb1e46a94c6abdc06527ae1a0ff6c370e484eef
+  checksum: 2f1837a059d10fe51953440aa4256557777f0728d18c63ce55c66c028aa86b6e0df1fdc6e0e214473f6b0b95560b62285c1d5608e8a5fc6fd813a8ba95b70f39
   languageName: node
   linkType: hard
 
