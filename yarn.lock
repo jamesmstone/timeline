@@ -2949,12 +2949,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"p-limit@npm:^7.1.1":
-  version: 7.1.1
-  resolution: "p-limit@npm:7.1.1"
+"p-limit@npm:^7.2.0":
+  version: 7.2.0
+  resolution: "p-limit@npm:7.2.0"
   dependencies:
     yocto-queue: ^1.2.1
-  checksum: 80b15159bc5dc1d1f48ba6809a7747b5338176862f137233518a488865fb9fa98b545106838e7f3797f95fb57eba4d7e3714ad2b1f1831a08aa995b5d0459653
+  checksum: 6e9e5cc3e9fb41745e566cd16d02ac9f3a88e116f5c2df79b8a5e575e94aa8f3b8135b2de598116b31ea187b5d05b07d112094cc79bf085dfaa3deaa2afa9d15
   languageName: node
   linkType: hard
 
@@ -3399,7 +3399,7 @@ __metadata:
     "@vercel/node": ^5.3.21
     moment: ^2.30.1
     moment-timezone: ^0.6.0
-    p-limit: ^7.1.1
+    p-limit: ^7.2.0
     p-memoize: ^8.0.0
     parcel: ^2.16.0
     prettier: ^3.6.2
