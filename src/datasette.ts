@@ -34,14 +34,22 @@ export const addTTL = (url: string, { end }: Range): string => {
   providedURL.searchParams.set("_ttl", ttl.toString());
   return providedURL.toString();
 };
+// Datasette answers a missing database or a bad query with a JSON error
+// object and a 4xx, so parsing without checking the status resolves with an
+// object where the caller expects an array -- and the TypeError lands outside
+// the per-chunk error handling, taking every other row's data down with it.
+const assertOk = (res: Response, url: string): Response => {
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${url}`);
+  return res;
+};
 export const datasetteFetch = async (url: string) => {
-  const res = await fetcher(url);
+  const res = assertOk(await fetcher(url), url);
   return await res.json();
 };
 export const datasetteFetchLink = async (url: string) => {
   let json = [];
   while (url !== undefined) {
-    const res = await fetcher(url);
+    const res = assertOk(await fetcher(url), url);
     const newJson = await res.json();
     json = [...json, ...newJson];
     const linkHeader = res.headers.get("link");
