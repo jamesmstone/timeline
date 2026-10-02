@@ -741,13 +741,13 @@
     url = "https://registry.npmjs.org/uuid/-/uuid-14.0.2.tgz";
     hash = "sha512-xZe/16rV4aa+HGSOCiY2YeLT1OybRLrrkL/Rqaq7p7GMVXjFh+6wN4oMYgjFmnSnhY8t6Xpdl2l9qmnHYuMHwQ==";
   };
-  "vis-data@8.0.5" = fetchurl {
-    url = "https://registry.npmjs.org/vis-data/-/vis-data-8.0.5.tgz";
-    hash = "sha512-tRQKcTGaclo60rTY1j4v7BgD9v5jfD3wl+JgR1q6I4AI7go3QH5OjMCLIuZPpL2sf4IRMlwyPlRLnK4m+Phjsw==";
+  "vis-data@8.0.1" = fetchurl {
+    url = "https://registry.npmjs.org/vis-data/-/vis-data-8.0.1.tgz";
+    hash = "sha512-yQFFHlxQ0tDHbi+ay5HZ1bR65ovDuL1GNlC4O4YIbz6sppRK0qFHn0L4Pp2La+vy2O0MiSDRjPNr49y/bAw5Sw==";
   };
-  "vis-timeline@8.5.4" = fetchurl {
-    url = "https://registry.npmjs.org/vis-timeline/-/vis-timeline-8.5.4.tgz";
-    hash = "sha512-Xt7RNrRvOkQiSyk6vFTXSRwTunT0y9MzDgHY8N8H9nPuebJ6Vg+u3xnv0Swbxna/Pa2E3HjaBblEIQiK74E01Q==";
+  "vis-timeline@8.4.0" = fetchurl {
+    url = "https://registry.npmjs.org/vis-timeline/-/vis-timeline-8.4.0.tgz";
+    hash = "sha512-kOA+s2tog7OTW8vOXvs/0s6r6MS0694HWaAqO/The6KkhfleThgKP5zKrM6zUfiCkFQlvxyO3BtsBBaaj9Hjew==";
   };
   "vis-util@6.0.2" = fetchurl {
     url = "https://registry.npmjs.org/vis-util/-/vis-util-6.0.2.tgz";
