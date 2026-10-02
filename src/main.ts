@@ -12,14 +12,10 @@ import { Range } from "./range";
 import { clearWaitingRequests } from "./fetcher";
 import {
   loadHeartRate,
-  loadJava,
-  loadJS,
   loadLastfm,
   loadRead,
-  loadSQL,
   loadSteps,
   loadStressLevel,
-  loadTS,
 } from "./datasetteLoaders";
 import { loadFamily } from "./family";
 
@@ -90,14 +86,6 @@ const loadDataForDateRange = async (
       return await loadSteps(dateRange, search);
     case "Read":
       return await loadRead(dateRange, search);
-    case "JavaScript":
-      return await loadJS(dateRange, search);
-    case "Java":
-      return await loadJava(dateRange, search);
-    case "SQL":
-      return await loadSQL(dateRange, search);
-    case "TypeScript":
-      return await loadTS(dateRange, search);
     case "Family":
       return await loadFamily(dateRange, search);
   }
@@ -119,10 +107,6 @@ const groups = [
   "Music",
   "Family",
   "Read",
-  "JavaScript",
-  "TypeScript",
-  "SQL",
-  "Java",
 ] as const;
 export type Group = (typeof groups)[number];
 

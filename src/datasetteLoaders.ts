@@ -627,34 +627,3 @@ export const loadSteps: Loader = getGarminLoader({
   dateFormat: "ISO",
   aggregateFunction: "sum",
 });
-const getLanguageLoader = (language: Group): Loader =>
-  getDatasetteLoader<BaseDetail, BaseSummary>({
-    baseAPI: "https://wakatime.jamesst.one/wakatime.json",
-    baseSQL: `with data as (select
-    unixepoch(date) as date_time,
-    unixepoch(date, '+1 day') as date_time_end,
-    '${language}' as search,
-    ${language} as value
-  from
-    languages
-  where
-    ${language} is not null
-  )`,
-    group: language,
-    detailType: "graph",
-    graphOptions: { style: "line" },
-    aggregateFunction: "sum",
-    start: moment("2019-03-01"),
-    end: moment(),
-    detailContentFormatter: (detail, { group }) =>
-      group + " " + detail.date_time,
-    detailTitleFormatter: (detail, { group }) => group + " " + detail.date_time,
-    summaryContentFormatter: (summary, periodLabel) =>
-      `Listened to ${summary.aggregate} songs during ${periodLabel}`,
-    summaryTitleFormatter: (summary, periodLabel) =>
-      `Listened:  ${summary.aggregate}`,
-  });
-export const loadJS = getLanguageLoader("JavaScript");
-export const loadJava = getLanguageLoader("Java");
-export const loadSQL = getLanguageLoader("SQL");
-export const loadTS = getLanguageLoader("TypeScript");
