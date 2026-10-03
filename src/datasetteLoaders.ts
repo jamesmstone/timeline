@@ -587,7 +587,7 @@ const getGarminLoader = ({
   });
 export const loadHeartRate: Loader = getGarminLoader({
   dateFormat: "ISO",
-  baseAPI: "https://garmin.jamesst.one/garmin_monitoring.json",
+  baseAPI: "https://garmin.jamesst.one/james_garmin_monitoring.json",
   baseSQL: `with data as (select timestamp as date_time,
                 'heart_rate' as search,
                 hr.heart_rate as value
@@ -597,7 +597,7 @@ export const loadHeartRate: Loader = getGarminLoader({
 });
 export const loadStressLevel: Loader = getGarminLoader({
   dateFormat: "ISO",
-  baseAPI: "https://garmin.jamesst.one/garmin.json",
+  baseAPI: "https://garmin.jamesst.one/james_garmin.json",
   baseSQL: `with data as (select
                             timestamp as date_time,
                             'stress_level' as search,
@@ -612,7 +612,7 @@ export const loadStressLevel: Loader = getGarminLoader({
 });
 
 export const loadSteps: Loader = getGarminLoader({
-  baseAPI: "https://garmin.jamesst.one/garmin_monitoring.json",
+  baseAPI: "https://garmin.jamesst.one/james_garmin_monitoring.json",
   baseSQL: `with data as (select
                             timestamp as date_time,
                             'steps' as search,
