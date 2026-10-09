@@ -6,6 +6,8 @@ import {
   TimelineWindow,
 } from "vis-timeline/peer";
 import "vis-timeline/styles/vis-timeline-graph2d.css";
+// After vis's own sheet, so the theme overrides win on equal specificity.
+import "./styles.css";
 import { Graph2dOptions } from "vis-timeline/types";
 import * as moment from "moment-timezone";
 import { Range } from "./range";
