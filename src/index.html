@@ -12,7 +12,7 @@
       <header class="masthead">
         <div>
           <h1>Timeline</h1>
-          <p>Heart rate, stress, steps, music, family and reading</p>
+          <p>Heart rate, stress, sleep, steps, music, family and reading</p>
         </div>
         <div class="search">
           <svg
@@ -34,8 +34,52 @@
           />
         </div>
       </header>
+      <nav class="ranges" aria-label="Jump to a time range">
+        <button type="button" data-preset="today">Today</button>
+        <button type="button" data-preset="yesterday">Yesterday</button>
+        <button type="button" data-preset="week">Week</button>
+        <button type="button" data-preset="month">Month</button>
+        <button type="button" data-preset="year">Year</button>
+      </nav>
       <main id="visualization" class="board"></main>
     </div>
+
+    <!-- Each graph line is stroked with its group's gradient, so a point's
+         colour tracks its height within the window. The stops are painted
+         from CSS custom properties, which is what keeps them theme-aware. -->
+    <svg class="ramps" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="ramp-heart" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" />
+          <stop offset="1" />
+        </linearGradient>
+        <linearGradient id="ramp-stress" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" />
+          <stop offset="1" />
+        </linearGradient>
+        <linearGradient id="ramp-sleep" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" />
+          <stop offset="1" />
+        </linearGradient>
+        <linearGradient id="ramp-steps" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" />
+          <stop offset="1" />
+        </linearGradient>
+        <linearGradient id="ramp-music" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" />
+          <stop offset="1" />
+        </linearGradient>
+        <linearGradient id="ramp-family" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" />
+          <stop offset="1" />
+        </linearGradient>
+        <linearGradient id="ramp-read" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" />
+          <stop offset="1" />
+        </linearGradient>
+      </defs>
+    </svg>
+
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

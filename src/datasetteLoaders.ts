@@ -611,6 +611,52 @@ export const loadStressLevel: Loader = getGarminLoader({
   start: moment.unix(1506186180 - 1),
 });
 
+const formatHours = (hours: number): string => {
+  const whole = Math.floor(hours);
+  const minutes = Math.round((hours - whole) * 60);
+  return minutes === 0 ? `${whole}h` : `${whole}h ${minutes}m`;
+};
+
+type sleepDetail = BaseDetail & {
+  total: string;
+  qualifier: string | null;
+  score: number | null;
+};
+
+export const loadSleep: Loader = getDatasetteLoader<sleepDetail, BaseSummary>({
+  dateFormat: "ISO",
+  baseAPI: "https://garmin.jamesst.one/james_garmin.json",
+  // total_sleep is a TIME string, and SQLite's strftime rejects the six
+  // fractional digits Garmin writes, so pull the hours and minutes out by hand.
+  baseSQL: `with data as (select
+                            start                               as date_time,
+                            "end"                               as date_time_end,
+                            'sleep ' || coalesce(qualifier, '') as search,
+                            cast(substr(total_sleep, 1, 2) as integer)
+                              + cast(substr(total_sleep, 4, 2) as integer) / 60.0
+                                                                as value,
+                            qualifier,
+                            score
+                          from sleep
+                          where start is not null
+                            and total_sleep > '00:00:00')`,
+  group: "Sleep",
+  start: moment("2016-06-03"),
+  end: moment(),
+  aggregateFunction: "avg",
+  detailContentFormatter: ({ value, qualifier }) =>
+    qualifier === null
+      ? formatHours(value)
+      : `${formatHours(value)} · ${qualifier.toLowerCase()}`,
+  detailTitleFormatter: ({ value, score }) =>
+    score === null
+      ? `Slept ${formatHours(value)}`
+      : `Slept ${formatHours(value)}, scored ${score}`,
+  summaryContentFormatter: (summary, periodLabel) =>
+    `Slept ${formatHours(summary.aggregate)} on average during ${periodLabel}`,
+  summaryTitleFormatter: (summary) => `Slept ${formatHours(summary.aggregate)}`,
+});
+
 export const loadSteps: Loader = getGarminLoader({
   baseAPI: "https://garmin.jamesst.one/james_garmin_monitoring.json",
   baseSQL: `with data as (select
