@@ -6,18 +6,22 @@ import {
   TimelineWindow,
 } from "vis-timeline/peer";
 import "vis-timeline/styles/vis-timeline-graph2d.css";
+// After vis's own sheet, so the theme overrides win on equal specificity.
+import "./styles.css";
 import { Graph2dOptions } from "vis-timeline/types";
 import * as moment from "moment-timezone";
-import { Range } from "./range";
+import { Interval, Range } from "./range";
 import { clearWaitingRequests } from "./fetcher";
 import {
   loadHeartRate,
   loadLastfm,
   loadRead,
+  loadSleep,
   loadSteps,
   loadStressLevel,
 } from "./datasetteLoaders";
 import { loadFamily } from "./family";
+import { drawExtremes, placeExtremes } from "./markers";
 
 const debounce = (func, timeout = 300) => {
   let timer;
@@ -84,6 +88,8 @@ const loadDataForDateRange = async (
       return await loadStressLevel(dateRange, search);
     case "Steps":
       return await loadSteps(dateRange, search);
+    case "Sleep":
+      return await loadSleep(dateRange, search);
     case "Read":
       return await loadRead(dateRange, search);
     case "Family":
@@ -96,13 +102,34 @@ export type Loader = (
   search: string | undefined,
 ) => Promise<TimelineDataItem>;
 
-const end = moment.tz("UTC").endOf("day");
-const start = end.clone().subtract(5, "day").startOf("day");
-const initRange = { start, end };
+const today = (): Range => ({
+  start: moment.tz("UTC").startOf("day"),
+  end: moment.tz("UTC").endOf("day"),
+});
+const back = (amount: number, unit: Interval): Range => ({
+  start: moment.tz("UTC").startOf("day").subtract(amount, unit).add(1, "day"),
+  end: moment.tz("UTC").endOf("day"),
+});
+
+const presets = {
+  today,
+  yesterday: (): Range => ({
+    start: moment.tz("UTC").subtract(1, "day").startOf("day"),
+    end: moment.tz("UTC").subtract(1, "day").endOf("day"),
+  }),
+  week: (): Range => back(1, "week"),
+  month: (): Range => back(1, "month"),
+  year: (): Range => back(1, "year"),
+};
+type Preset = keyof typeof presets;
+
+const initPreset: Preset = "week";
+const initRange = presets[initPreset]();
 
 const groups = [
   "Heart rate",
   "Stress level",
+  "Sleep",
   "Steps",
   "Music",
   "Family",
@@ -110,7 +137,20 @@ const groups = [
 ] as const;
 export type Group = (typeof groups)[number];
 
-let lines: { line: Timeline | Graph2d; group: Group }[] = [];
+type Line = {
+  group: Group;
+  line: Timeline | Graph2d;
+  chart: HTMLElement;
+  markers: HTMLElement;
+};
+
+let lines: Line[] = [];
+
+// Each row is its own vis instance, so only the last draws the date axis. The
+// rows line up with it through the shared --gutter in styles.css, which a
+// graph's y-axis has to fill exactly.
+const drawsAxis = (group: Group): boolean =>
+  group === groups[groups.length - 1];
 
 const setLineGraph = (
   range: Range,
@@ -125,10 +165,12 @@ const setLineGraph = (
 
     barChart: { align: "left" },
     drawPoints: false,
+    showMajorLabels: drawsAxis(group),
+    showMinorLabels: drawsAxis(group),
     dataAxis: {
       icons: false,
       // @ts-ignore
-      width: 75,
+      width: getComputedStyle(container).getPropertyValue("--gutter"),
       left: {
         // @ts-ignore
         format: (value) => value.toLocaleString(),
@@ -143,6 +185,10 @@ const setLineGraph = (
   return new Graph2d(
     container,
     line.data,
+    // vis would otherwise number the class per created group, so a lane that
+    // empties and refills drops to group1, group2... and loses the theme. A
+    // custom name would also lose vis's own fill-opacity: 0 on the groupN rules.
+    [{ id: group, content: group, className: "vis-graph-group0" }],
     line.hasOwnProperty("graphOptions")
       ? { ...graphOptions, ...line.graphOptions }
       : graphOptions,
@@ -163,6 +209,8 @@ const setLineTimeline = (
     moment: (date) => moment(date).utc(),
     groupHeightMode: "auto",
     width: width,
+    showMajorLabels: drawsAxis(group),
+    showMinorLabels: drawsAxis(group),
   };
   return new Timeline(
     container,
@@ -186,8 +234,39 @@ const updateAllLinesRange = async (
 };
 const search = document.getElementById("search");
 
+const presetButtons = Array.from(
+  document.querySelectorAll<HTMLButtonElement>("[data-preset]"),
+);
+
+// Applying a preset moves every line, and each move reports a range change
+// that is indistinguishable from a drag -- so suppress the "you panned off the
+// preset" reset for the duration.
+let applyingPreset = false;
+
+const setActivePreset = (preset: Preset | null): void => {
+  for (const button of presetButtons) {
+    button.setAttribute(
+      "aria-pressed",
+      String(button.dataset.preset === preset),
+    );
+  }
+};
+
+const applyPreset = (preset: Preset): void => {
+  const { start, end } = presets[preset]();
+  clearWaitingRequests();
+  applyingPreset = true;
+  setActivePreset(preset);
+  for (const { line } of lines) {
+    line.setWindow(start.toDate(), end.toDate(), { animation: false });
+  }
+  applyingPreset = false;
+};
+
+type Slot = { chart: HTMLElement; markers: HTMLElement };
+
 const setLine = (
-  container: HTMLElement,
+  { chart, markers }: Slot,
   lineData: TimelineDataItem,
   range: Range,
   group: Group,
@@ -207,8 +286,14 @@ const setLine = (
 
   const line =
     lineData.result.type === "graph"
-      ? setLineGraph(range, container, lineData.result, group)
-      : setLineTimeline(range, container, lineData.result, group);
+      ? setLineGraph(range, chart, lineData.result, group)
+      : setLineTimeline(range, chart, lineData.result, group);
+
+  const showExtremes = (result: TimelineDataItem["result"]) => {
+    drawExtremes(markers, result, line.getWindow());
+    placeExtremes(chart, markers, line);
+  };
+  showExtremes(lineData.result);
 
   line.on("rangechanged", async (properties: TimelineWindow) => {
     const newRange = {
@@ -224,18 +309,20 @@ const setLine = (
     );
     if (newLineData.result.type !== lineData.result.type) {
       line.destroy();
-      const container = document.getElementById(group);
-      container.textContent = null;
-      const newLine = setLine(container, newLineData, newRange, group);
+      chart.textContent = null;
+      const newLine = setLine({ chart, markers }, newLineData, newRange, group);
       lines = lines.map((line) => {
-        if (line.group === group) return { group, line: newLine };
+        if (line.group === group) return { ...line, line: newLine };
         return line;
       });
       return;
     }
     line.setItems(newLineData.result.data);
+    showExtremes(newLineData.result);
   });
   line.on("rangechange", (properties: TimelineWindow) => {
+    if (!applyingPreset) setActivePreset(null);
+    placeExtremes(chart, markers, line);
     updateAllLinesRange(
       {
         start: moment.tz(properties.start, "UTC"),
@@ -267,25 +354,46 @@ const run = async () => {
 
   search.addEventListener("input", onSearch);
 
-  const container = document.getElementById("visualization");
+  for (const button of presetButtons) {
+    button.addEventListener("click", () =>
+      applyPreset(button.dataset.preset as Preset),
+    );
+  }
+  setActivePreset(initPreset);
 
-  const groupDivs: { groupDiv: HTMLDivElement; group: Group }[] = groups.map(
-    (group: Group) => {
-      const groupDiv = document.createElement("div");
-      groupDiv.setAttribute("id", group);
-      groupDiv.setAttribute("class", "line");
-      return { group, groupDiv };
-    },
-  );
-  groupDivs.forEach(({ groupDiv }) => {
-    container.appendChild(groupDiv);
+  window.addEventListener("resize", () => {
+    for (const { line, chart, markers } of lines) {
+      placeExtremes(chart, markers, line);
+    }
   });
 
-  const loadLines = groupDivs.map(async ({ group, groupDiv }) => {
+  const container = document.getElementById("visualization");
+
+  const slots = groups.map((group: Group) => {
+    const groupDiv = document.createElement("div");
+    groupDiv.setAttribute("id", group);
+    groupDiv.setAttribute("class", "line");
+
+    const chart = document.createElement("div");
+    chart.setAttribute("class", "line__chart");
+    const markers = document.createElement("div");
+    markers.setAttribute("class", "markers");
+    groupDiv.append(chart, markers);
+
+    container.appendChild(groupDiv);
+    return { group, chart, markers };
+  });
+
+  const loadLines = slots.map(async ({ group, chart, markers }) => {
     const data = await loadDataForDateRange(group, initRange, search.value);
     lines = [
       ...lines,
-      { group, line: setLine(groupDiv, data, initRange, group) },
+      {
+        group,
+        chart,
+        markers,
+        line: setLine({ chart, markers }, data, initRange, group),
+      },
     ];
   });
   await Promise.all(loadLines);

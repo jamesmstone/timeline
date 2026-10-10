@@ -1,0 +1,566 @@
+:root {
+  color-scheme: light;
+
+  /* Each group has a two-stop ramp: --c-x paints its peak, --c-x-low its
+     trough, and the line gradient runs between them. */
+  --c-heart: #e11d48;
+  --c-heart-low: #fb7185;
+  --c-stress: #c2410c;
+  --c-stress-low: #fbbf24;
+  --c-sleep: #4338ca;
+  --c-sleep-low: #818cf8;
+  --c-steps: #075985;
+  --c-steps-low: #38bdf8;
+  --c-music: #6d28d9;
+  --c-music-low: #a78bfa;
+  --c-family: #15803d;
+  --c-family-low: #4ade80;
+  --c-read: #0f766e;
+  --c-read-low: #2dd4bf;
+
+  /* In px, because the graphs also hand it to vis as their y-axis width. */
+  --gutter: 90px;
+
+  --bg: #e9edf4;
+  --bg-glow: rgba(37, 99, 235, 0.1);
+  --surface: #ffffff;
+  --ink: #0f172a;
+  --ink-muted: #5b6b7c;
+  --ink-faint: #94a3b8;
+  --hairline: #e6eaf1;
+  --hairline-strong: #d3dae5;
+  --pill-ink: #ffffff;
+  --pill-ink-low: #0f172a;
+  --now: #e11d48;
+  --focus: rgba(37, 99, 235, 0.35);
+  --shadow:
+    0 1px 2px rgba(15, 23, 42, 0.05), 0 18px 40px -24px rgba(15, 23, 42, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --c-heart: #fb7185;
+    --c-heart-low: #fda4af;
+    --c-stress: #fb923c;
+    --c-stress-low: #fde047;
+    --c-sleep: #818cf8;
+    --c-sleep-low: #a5b4fc;
+    --c-steps: #38bdf8;
+    --c-steps-low: #7dd3fc;
+    --c-music: #c084fc;
+    --c-music-low: #d8b4fe;
+    --c-family: #4ade80;
+    --c-family-low: #86efac;
+    --c-read: #2dd4bf;
+    --c-read-low: #5eead4;
+
+    --bg: #04070d;
+    --bg-glow: rgba(56, 189, 248, 0.09);
+    --surface: #0b111c;
+    --ink: #eef2f8;
+    --ink-muted: #8b98ab;
+    --ink-faint: #5a6678;
+    --hairline: #1c2433;
+    --hairline-strong: #2b3549;
+    --pill-ink: #050a12;
+    --pill-ink-low: #050a12;
+    --now: #fb7185;
+    --focus: rgba(56, 189, 248, 0.4);
+    --shadow: 0 24px 60px -32px rgba(0, 0, 0, 0.9);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Inter,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  font-size: 15px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(90rem 40rem at 50% -20rem, var(--bg-glow), transparent 70%),
+    var(--bg);
+  color: var(--ink);
+}
+
+.shell {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 1.75rem 1.5rem 4rem;
+}
+
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.masthead h1 {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.masthead p {
+  margin: 0.25rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: min(100%, 20rem);
+  padding: 0 0.95rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.search:focus-within {
+  border-color: transparent;
+  outline: 2px solid var(--focus);
+  outline-offset: -1px;
+}
+
+.search svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  color: var(--ink-faint);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.6rem 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+.search input::placeholder {
+  color: var(--ink-faint);
+}
+
+.search input:focus {
+  outline: none;
+}
+
+.ranges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  margin-bottom: 0.9rem;
+}
+
+.ranges button {
+  position: relative;
+  padding: 0.4rem 0.85rem 0.75rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: none;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ranges button:hover {
+  color: var(--ink);
+}
+
+.ranges button[aria-pressed="true"] {
+  color: var(--ink);
+}
+
+.ranges button[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  bottom: 0.15rem;
+  left: 50%;
+  translate: -50% 0;
+  border: 0.3rem solid transparent;
+  border-bottom: 0;
+  border-top-color: currentColor;
+}
+
+.board {
+  border: 1px solid var(--hairline);
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.line {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.1rem minmax(0, 1fr);
+  gap: 1rem;
+  min-height: 5rem;
+  padding: 0.9rem 1.25rem;
+}
+
+.line__chart {
+  min-width: 0;
+}
+
+.line + .line {
+  border-top: 1px solid var(--hairline);
+}
+
+.line::before {
+  content: attr(id);
+  display: grid;
+  place-items: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--pill-ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.line[id="Heart rate"] {
+  --accent: var(--c-heart);
+  --accent-low: var(--c-heart-low);
+  --ramp: url("#ramp-heart");
+}
+.line[id="Stress level"] {
+  --accent: var(--c-stress);
+  --accent-low: var(--c-stress-low);
+  --ramp: url("#ramp-stress");
+}
+.line[id="Sleep"] {
+  --accent: var(--c-sleep);
+  --accent-low: var(--c-sleep-low);
+  --ramp: url("#ramp-sleep");
+}
+.line[id="Steps"] {
+  --accent: var(--c-steps);
+  --accent-low: var(--c-steps-low);
+  --ramp: url("#ramp-steps");
+}
+.line[id="Music"] {
+  --accent: var(--c-music);
+  --accent-low: var(--c-music-low);
+  --ramp: url("#ramp-music");
+}
+.line[id="Family"] {
+  --accent: var(--c-family);
+  --accent-low: var(--c-family-low);
+  --ramp: url("#ramp-family");
+}
+.line[id="Read"] {
+  --accent: var(--c-read);
+  --accent-low: var(--c-read-low);
+  --ramp: url("#ramp-read");
+}
+
+/* The gradients live in one <defs> outside the rows, so each set of stops has
+   to name its group's colours rather than inherit --accent. */
+.ramps {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+#ramp-heart stop:first-child {
+  stop-color: var(--c-heart);
+}
+#ramp-heart stop:last-child {
+  stop-color: var(--c-heart-low);
+}
+#ramp-stress stop:first-child {
+  stop-color: var(--c-stress);
+}
+#ramp-stress stop:last-child {
+  stop-color: var(--c-stress-low);
+}
+#ramp-sleep stop:first-child {
+  stop-color: var(--c-sleep);
+}
+#ramp-sleep stop:last-child {
+  stop-color: var(--c-sleep-low);
+}
+#ramp-steps stop:first-child {
+  stop-color: var(--c-steps);
+}
+#ramp-steps stop:last-child {
+  stop-color: var(--c-steps-low);
+}
+#ramp-music stop:first-child {
+  stop-color: var(--c-music);
+}
+#ramp-music stop:last-child {
+  stop-color: var(--c-music-low);
+}
+#ramp-family stop:first-child {
+  stop-color: var(--c-family);
+}
+#ramp-family stop:last-child {
+  stop-color: var(--c-family-low);
+}
+#ramp-read stop:first-child {
+  stop-color: var(--c-read);
+}
+#ramp-read stop:last-child {
+  stop-color: var(--c-read-low);
+}
+
+.markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.marker {
+  position: absolute;
+  width: 0;
+  border-left: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.marker[hidden] {
+  display: none;
+}
+
+.marker__chip {
+  position: absolute;
+  left: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  color: var(--pill-ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+  translate: -50% 0;
+  box-shadow: 0 2px 10px -3px rgba(0, 0, 0, 0.5);
+}
+
+.marker__chip time {
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.marker--high .marker__chip {
+  top: 0;
+  background: var(--accent);
+}
+
+.marker--low .marker__chip {
+  bottom: 0;
+  background: var(--accent-low);
+  color: var(--pill-ink-low);
+}
+
+/* vis-timeline ships a light-only theme with hard-coded greys. */
+
+.vis-timeline {
+  border: 0;
+  font-family: inherit;
+  font-size: 0.8rem;
+}
+
+.vis-panel.vis-center,
+.vis-panel.vis-left,
+.vis-panel.vis-right,
+.vis-panel.vis-top,
+.vis-panel.vis-bottom {
+  border-color: var(--hairline);
+}
+
+.vis-panel.vis-center,
+.vis-panel.vis-left,
+.vis-panel.vis-right {
+  border-top-style: none;
+}
+
+/* vis sizes the plot from this panel's clientWidth, so a minimum here also
+   holds the gutter on timelines and on graphs left empty, which have no
+   y-axis to fill it. */
+.vis-panel.vis-left {
+  box-sizing: content-box;
+  min-width: var(--gutter);
+}
+
+.vis-panel.vis-center,
+.vis-panel.vis-top,
+.vis-panel.vis-bottom {
+  border-left-style: none;
+  border-right-style: none;
+}
+
+.vis-time-axis .vis-text {
+  padding: 0.2rem 0.35rem;
+  line-height: 1rem;
+}
+
+.vis-time-axis .vis-text,
+.vis-data-axis .vis-y-axis.vis-major,
+.vis-data-axis .vis-y-axis.vis-title,
+.vis-labelset .vis-label {
+  color: var(--ink-muted);
+}
+
+.vis-time-axis .vis-text.vis-major {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.vis-data-axis .vis-y-axis.vis-minor {
+  color: var(--ink-faint);
+}
+
+.vis-time-axis .vis-grid.vis-minor,
+.vis-panel.vis-background.vis-horizontal .vis-grid.vis-minor {
+  border-color: var(--hairline);
+}
+
+.vis-time-axis .vis-grid.vis-major,
+.vis-panel.vis-background.vis-horizontal .vis-grid.vis-major {
+  border-color: var(--hairline-strong);
+}
+
+.vis-foreground .vis-group,
+.vis-labelset .vis-label {
+  border-bottom-color: var(--hairline);
+}
+
+.vis-current-time {
+  width: 1px;
+  background-color: var(--now);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--now) 25%, transparent);
+}
+
+.vis-graph-group0 {
+  stroke: var(--accent);
+  stroke-width: 2.25px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Only the line paths take the ramp: a bar is its own bounding box, so an
+   objectBoundingBox gradient would repeat over every bar instead of
+   tracking height. */
+path.vis-graph-group0 {
+  stroke: var(--ramp);
+}
+
+.vis-fill.vis-graph-group0 {
+  fill: var(--accent);
+  fill-opacity: 0.12;
+  stroke: none;
+}
+
+.vis-timeline .vis-bar.vis-graph-group0 {
+  fill: var(--accent);
+  fill-opacity: 0.45;
+  stroke: var(--accent);
+  stroke-width: 1px;
+}
+
+.vis-timeline .vis-point.vis-graph-group0 {
+  fill: var(--accent);
+  stroke: var(--surface);
+}
+
+.vis-item {
+  border-radius: 0.45rem;
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background-color: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+.vis-item.vis-selected {
+  border-color: var(--accent);
+  background-color: color-mix(in srgb, var(--accent) 28%, var(--surface));
+}
+
+.vis-item.vis-dot {
+  border-color: var(--accent);
+}
+
+.vis-item.vis-line {
+  border-left-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.vis-item .vis-item-content {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.vis-item img {
+  border-radius: 0.25rem;
+}
+
+div.vis-tooltip {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 0.5rem;
+  background-color: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.8rem;
+  box-shadow: var(--shadow);
+}
+
+@media (max-width: 40rem) {
+  .shell {
+    padding: 1.25rem 0.75rem 3rem;
+  }
+
+  .board {
+    border-radius: 1rem;
+  }
+
+  .line {
+    grid-template-columns: 1.6rem minmax(0, 1fr);
+    gap: 0.6rem;
+    padding: 0.75rem;
+  }
+
+  .line::before {
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+  }
+}

@@ -102,12 +102,12 @@ order by date_time desc`;
             title: detailTitleFormatter(detail, options),
             start:
               dateFormat === "ISO"
-                ? moment(detail.date_time).toDate()
+                ? moment.utc(detail.date_time).toDate()
                 : moment.unix(detail.date_time).toDate(),
             ...(detail.hasOwnProperty("date_time_end") && {
               end:
                 dateFormat === "ISO"
-                  ? moment(detail.date_time_end).toDate()
+                  ? moment.utc(detail.date_time_end).toDate()
                   : moment.unix(detail.date_time_end).toDate(),
             }),
           };
@@ -134,7 +134,7 @@ order by date_time desc`;
       return d.value.map((detail): GraphDataItem => {
         const start =
           dateFormat === "ISO"
-            ? moment(detail.date_time).toDate()
+            ? moment.utc(detail.date_time).toDate()
             : moment.unix(detail.date_time).toDate();
         return {
           x: start,
@@ -146,7 +146,7 @@ order by date_time desc`;
           ...(detail.hasOwnProperty("date_time_end") && {
             end:
               dateFormat === "ISO"
-                ? moment(detail.date_time_end).toDate()
+                ? moment.utc(detail.date_time_end).toDate()
                 : moment.unix(detail.date_time_end).toDate(),
           }),
         };
@@ -212,8 +212,8 @@ order by
         ];
       }
       return d.value.map((d) => {
-        const start = moment(d.day).toDate();
-        const periodLabel = moment(d.day).format("D MMM YY");
+        const start = moment.utc(d.day).toDate();
+        const periodLabel = moment.utc(d.day).format("D MMM YY");
         return {
           group,
           content: summaryContentFormatter(d, periodLabel, options),
@@ -221,7 +221,7 @@ order by
           x: start,
           y: d.aggregate,
           start,
-          end: capNow(moment(d.day).add(1, "day").startOf("day")).toDate(),
+          end: capNow(moment.utc(d.day).add(1, "day").startOf("day")).toDate(),
         };
       });
     }),
@@ -286,8 +286,8 @@ order by
         ];
       }
       return d.value.map((d) => {
-        const start = moment(d.day).toDate();
-        const periodLabel = moment(d.day).format("MMM YY");
+        const start = moment.utc(d.day).toDate();
+        const periodLabel = moment.utc(d.day).format("MMM YY");
         return {
           group,
           content: summaryContentFormatter(d, periodLabel, options),
@@ -295,7 +295,9 @@ order by
           x: start,
           y: d.aggregate,
           start,
-          end: capNow(moment(d.day).add(1, "month").startOf("month")).toDate(),
+          end: capNow(
+            moment.utc(d.day).add(1, "month").startOf("month"),
+          ).toDate(),
         };
       });
     }),
@@ -360,8 +362,8 @@ order by
         ];
       }
       return d.value.map((d) => {
-        const start = moment(d.day).toDate();
-        const periodLabel = moment(d.day).format("YYYY");
+        const start = moment.utc(d.day).toDate();
+        const periodLabel = moment.utc(d.day).format("YYYY");
         return {
           group,
           content: summaryContentFormatter(d, periodLabel, options),
@@ -369,7 +371,9 @@ order by
           x: start,
           y: d.aggregate,
           start,
-          end: capNow(moment(d.day).add(1, "year").startOf("year")).toDate(),
+          end: capNow(
+            moment.utc(d.day).add(1, "year").startOf("year"),
+          ).toDate(),
         };
       });
     }),
@@ -609,6 +613,50 @@ export const loadStressLevel: Loader = getGarminLoader({
                             stress)`,
   group: "Stress level",
   start: moment.unix(1506186180 - 1),
+});
+
+const formatHours = (hours: number): string => {
+  const total = Math.round(hours * 60);
+  const whole = Math.floor(total / 60);
+  const minutes = total % 60;
+  return minutes === 0 ? `${whole}h` : `${whole}h ${minutes}m`;
+};
+
+type sleepDetail = BaseDetail & {
+  qualifier: string | null;
+  score: number | null;
+};
+
+export const loadSleep: Loader = getDatasetteLoader<sleepDetail, BaseSummary>({
+  dateFormat: "ISO",
+  baseAPI: "https://garmin.jamesst.one/james_garmin.json",
+  baseSQL: `with data as (select
+                            start                               as date_time,
+                            "end"                               as date_time_end,
+                            'sleep ' || coalesce(qualifier, '') as search,
+                            cast(substr(total_sleep, 1, 2) as integer)
+                              + cast(substr(total_sleep, 4, 2) as integer) / 60.0
+                                                                as value,
+                            qualifier,
+                            score
+                          from sleep
+                          where start is not null
+                            and total_sleep > '00:00:00')`,
+  group: "Sleep",
+  start: moment("2016-06-03"),
+  end: moment(),
+  aggregateFunction: "avg",
+  detailContentFormatter: ({ value, qualifier }) =>
+    qualifier === null
+      ? formatHours(value)
+      : `${formatHours(value)} · ${qualifier.toLowerCase()}`,
+  detailTitleFormatter: ({ value, score }) =>
+    score === null
+      ? `Slept ${formatHours(value)}`
+      : `Slept ${formatHours(value)}, scored ${score}`,
+  summaryContentFormatter: (summary, periodLabel) =>
+    `Slept ${formatHours(summary.aggregate)} on average during ${periodLabel}`,
+  summaryTitleFormatter: (summary) => `Slept ${formatHours(summary.aggregate)}`,
 });
 
 export const loadSteps: Loader = getGarminLoader({
