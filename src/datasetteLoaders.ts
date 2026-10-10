@@ -623,7 +623,6 @@ const formatHours = (hours: number): string => {
 };
 
 type sleepDetail = BaseDetail & {
-  total: string;
   qualifier: string | null;
   score: number | null;
 };
@@ -631,8 +630,6 @@ type sleepDetail = BaseDetail & {
 export const loadSleep: Loader = getDatasetteLoader<sleepDetail, BaseSummary>({
   dateFormat: "ISO",
   baseAPI: "https://garmin.jamesst.one/james_garmin.json",
-  // total_sleep is a TIME string, and SQLite's strftime rejects the six
-  // fractional digits Garmin writes, so pull the hours and minutes out by hand.
   baseSQL: `with data as (select
                             start                               as date_time,
                             "end"                               as date_time_end,

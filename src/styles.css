@@ -390,8 +390,7 @@ body {
   color: var(--pill-ink-low);
 }
 
-/* vis-timeline ships a light-only theme with hard-coded greys; every rule
-   below re-points one of those greys at a token so dark mode works. */
+/* vis-timeline ships a light-only theme with hard-coded greys. */
 
 .vis-timeline {
   border: 0;
