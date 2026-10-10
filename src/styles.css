@@ -30,6 +30,7 @@
   --hairline: #e6eaf1;
   --hairline-strong: #d3dae5;
   --pill-ink: #ffffff;
+  --pill-ink-low: #0f172a;
   --now: #e11d48;
   --focus: rgba(37, 99, 235, 0.35);
   --shadow:
@@ -64,6 +65,7 @@
     --hairline: #1c2433;
     --hairline-strong: #2b3549;
     --pill-ink: #050a12;
+    --pill-ink-low: #050a12;
     --now: #fb7185;
     --focus: rgba(56, 189, 248, 0.4);
     --shadow: 0 24px 60px -32px rgba(0, 0, 0, 0.9);
@@ -385,6 +387,7 @@ body {
 .marker--low .marker__chip {
   bottom: 0;
   background: var(--accent-low);
+  color: var(--pill-ink-low);
 }
 
 /* vis-timeline ships a light-only theme with hard-coded greys; every rule
