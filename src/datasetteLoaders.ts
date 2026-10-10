@@ -616,8 +616,9 @@ export const loadStressLevel: Loader = getGarminLoader({
 });
 
 const formatHours = (hours: number): string => {
-  const whole = Math.floor(hours);
-  const minutes = Math.round((hours - whole) * 60);
+  const total = Math.round(hours * 60);
+  const whole = Math.floor(total / 60);
+  const minutes = total % 60;
   return minutes === 0 ? `${whole}h` : `${whole}h ${minutes}m`;
 };
 
