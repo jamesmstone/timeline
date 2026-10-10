@@ -102,12 +102,12 @@ order by date_time desc`;
             title: detailTitleFormatter(detail, options),
             start:
               dateFormat === "ISO"
-                ? moment(detail.date_time).toDate()
+                ? moment.utc(detail.date_time).toDate()
                 : moment.unix(detail.date_time).toDate(),
             ...(detail.hasOwnProperty("date_time_end") && {
               end:
                 dateFormat === "ISO"
-                  ? moment(detail.date_time_end).toDate()
+                  ? moment.utc(detail.date_time_end).toDate()
                   : moment.unix(detail.date_time_end).toDate(),
             }),
           };
@@ -134,7 +134,7 @@ order by date_time desc`;
       return d.value.map((detail): GraphDataItem => {
         const start =
           dateFormat === "ISO"
-            ? moment(detail.date_time).toDate()
+            ? moment.utc(detail.date_time).toDate()
             : moment.unix(detail.date_time).toDate();
         return {
           x: start,
@@ -146,7 +146,7 @@ order by date_time desc`;
           ...(detail.hasOwnProperty("date_time_end") && {
             end:
               dateFormat === "ISO"
-                ? moment(detail.date_time_end).toDate()
+                ? moment.utc(detail.date_time_end).toDate()
                 : moment.unix(detail.date_time_end).toDate(),
           }),
         };
@@ -212,8 +212,8 @@ order by
         ];
       }
       return d.value.map((d) => {
-        const start = moment(d.day).toDate();
-        const periodLabel = moment(d.day).format("D MMM YY");
+        const start = moment.utc(d.day).toDate();
+        const periodLabel = moment.utc(d.day).format("D MMM YY");
         return {
           group,
           content: summaryContentFormatter(d, periodLabel, options),
@@ -221,7 +221,7 @@ order by
           x: start,
           y: d.aggregate,
           start,
-          end: capNow(moment(d.day).add(1, "day").startOf("day")).toDate(),
+          end: capNow(moment.utc(d.day).add(1, "day").startOf("day")).toDate(),
         };
       });
     }),
@@ -286,8 +286,8 @@ order by
         ];
       }
       return d.value.map((d) => {
-        const start = moment(d.day).toDate();
-        const periodLabel = moment(d.day).format("MMM YY");
+        const start = moment.utc(d.day).toDate();
+        const periodLabel = moment.utc(d.day).format("MMM YY");
         return {
           group,
           content: summaryContentFormatter(d, periodLabel, options),
@@ -295,7 +295,9 @@ order by
           x: start,
           y: d.aggregate,
           start,
-          end: capNow(moment(d.day).add(1, "month").startOf("month")).toDate(),
+          end: capNow(
+            moment.utc(d.day).add(1, "month").startOf("month"),
+          ).toDate(),
         };
       });
     }),
@@ -360,8 +362,8 @@ order by
         ];
       }
       return d.value.map((d) => {
-        const start = moment(d.day).toDate();
-        const periodLabel = moment(d.day).format("YYYY");
+        const start = moment.utc(d.day).toDate();
+        const periodLabel = moment.utc(d.day).format("YYYY");
         return {
           group,
           content: summaryContentFormatter(d, periodLabel, options),
@@ -369,7 +371,9 @@ order by
           x: start,
           y: d.aggregate,
           start,
-          end: capNow(moment(d.day).add(1, "year").startOf("year")).toDate(),
+          end: capNow(
+            moment.utc(d.day).add(1, "year").startOf("year"),
+          ).toDate(),
         };
       });
     }),
