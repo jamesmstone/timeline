@@ -177,6 +177,10 @@ const setLineGraph = (
   return new Graph2d(
     container,
     line.data,
+    // vis would otherwise number the class per created group, so a lane that
+    // empties and refills drops to group1, group2... and loses the theme. A
+    // custom name would also lose vis's own fill-opacity: 0 on the groupN rules.
+    [{ id: group, content: group, className: "vis-graph-group0" }],
     line.hasOwnProperty("graphOptions")
       ? { ...graphOptions, ...line.graphOptions }
       : graphOptions,
