@@ -146,6 +146,12 @@ type Line = {
 
 let lines: Line[] = [];
 
+// Each row is its own vis instance, so only the last draws the date axis. The
+// rows line up with it through the shared --gutter in styles.css, which a
+// graph's y-axis has to fill exactly.
+const drawsAxis = (group: Group): boolean =>
+  group === groups[groups.length - 1];
+
 const setLineGraph = (
   range: Range,
   container: HTMLElement,
@@ -159,10 +165,12 @@ const setLineGraph = (
 
     barChart: { align: "left" },
     drawPoints: false,
+    showMajorLabels: drawsAxis(group),
+    showMinorLabels: drawsAxis(group),
     dataAxis: {
       icons: false,
       // @ts-ignore
-      width: 75,
+      width: getComputedStyle(container).getPropertyValue("--gutter"),
       left: {
         // @ts-ignore
         format: (value) => value.toLocaleString(),
@@ -201,6 +209,8 @@ const setLineTimeline = (
     moment: (date) => moment(date).utc(),
     groupHeightMode: "auto",
     width: width,
+    showMajorLabels: drawsAxis(group),
+    showMinorLabels: drawsAxis(group),
   };
   return new Timeline(
     container,

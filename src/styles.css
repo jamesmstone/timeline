@@ -18,8 +18,8 @@
   --c-read: #0f766e;
   --c-read-low: #2dd4bf;
 
-  /* Two stacked .vis-text rows: line-height 1rem plus 0.2rem padding each. */
-  --axis-height: 2.8rem;
+  /* In px, because the graphs also hand it to vis as their y-axis width. */
+  --gutter: 90px;
 
   --bg: #e9edf4;
   --bg-glow: rgba(37, 99, 235, 0.1);
@@ -237,14 +237,6 @@ body {
   border-top: 1px solid var(--hairline);
 }
 
-/* Every row is its own vis instance and so draws its own date axis. Only the
-   last one is worth keeping, so the rest are pulled up by the axis height and
-   clipped. --axis-height follows from the .vis-text metrics pinned below. */
-.line:not(:last-child) .vis-timeline {
-  margin-bottom: calc(-1 * var(--axis-height));
-  clip-path: inset(0 0 var(--axis-height) 0);
-}
-
 .line::before {
   content: attr(id);
   display: grid;
@@ -416,6 +408,14 @@ body {
 .vis-panel.vis-left,
 .vis-panel.vis-right {
   border-top-style: none;
+}
+
+/* vis sizes the plot from this panel's clientWidth, so a minimum here also
+   holds the gutter on timelines and on graphs left empty, which have no
+   y-axis to fill it. */
+.vis-panel.vis-left {
+  box-sizing: content-box;
+  min-width: var(--gutter);
 }
 
 .vis-panel.vis-center,
