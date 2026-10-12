@@ -6,6 +6,8 @@
   "license": "None",
   "private": true,
   "devDependencies": {
+    "@types/bun": "^1.4.3",
+    "fast-xml-parser": "^5.11.2",
     "parcel": "^2.16.1",
     "prettier": "^3.6.2"
   },

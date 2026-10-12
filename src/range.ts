@@ -1,4 +1,4 @@
-import * as moment from "moment-timezone";
+import moment from "moment-timezone";
 import { unitOfTime } from "moment";
 
 export type Range = { start: moment.Moment; end: moment.Moment };

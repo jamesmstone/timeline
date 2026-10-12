@@ -42,12 +42,49 @@
       #     root * ${inputs.timeline.packages.${system}.default}
       #     file_server
       #   '';
+      #
+      # `packages.<system>.embed` is the server behind /embed.svg, which a
+      # directory cannot answer; run it with `nixosModules.default` and hand
+      # it that one path, e.g.
+      #   services.timeline-embed.enable = true;
+      #   services.caddy.virtualHosts."timeline.jamesst.one".extraConfig = ''
+      #     handle /embed.svg {
+      #       reverse_proxy 127.0.0.1:${toString config.services.timeline-embed.port}
+      #     }
+      #     handle {
+      #       root * ${inputs.timeline.packages.${system}.default}
+      #       file_server
+      #     }
+      #   '';
       packages = eachSystem (system: {
         default = pkgsFor.${system}.callPackage ./default.nix { };
+        embed = pkgsFor.${system}.callPackage ./embed.nix { };
       });
+
+      nixosModules.default =
+        { lib, pkgs, ... }:
+        {
+          imports = [ ./module.nix ];
+          services.timeline-embed.package =
+            lib.mkDefault
+              inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.embed;
+        };
 
       checks = eachSystem (system: {
         build = inputs.self.packages.${system}.default;
+        embed = inputs.self.packages.${system}.embed;
+        module =
+          (inputs.nixpkgs.lib.nixosSystem {
+            inherit system;
+            modules = [
+              inputs.self.nixosModules.default
+              {
+                services.timeline-embed.enable = true;
+                boot.isContainer = true;
+                system.stateVersion = "26.05";
+              }
+            ];
+          }).config.systemd.units."timeline-embed.service".unit;
       });
 
       devShells = eachSystem (system: {

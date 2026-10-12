@@ -1,7 +1,7 @@
-import { Loader, TimelineDataItem } from "./main";
+import { Loader, TimelineDataItem } from "./data";
 import { DataItem } from "vis-timeline/peer";
 import { fetcher } from "./fetcher";
-import moment = require("moment");
+import moment from "moment";
 
 type event = {
   date: string | null;
@@ -21,15 +21,19 @@ type FamilyJSON = {
     };
   };
 };
-let cachedFamilyJson: FamilyJSON | null = null;
+// The embed server lives far longer than a page view, so the tree has to
+// expire there rather than be fetched once for the life of the process.
+const familyTTL = 60 * 60 * 1000;
+let cachedFamilyJson: { json: FamilyJSON; at: number } | null = null;
 const fetchFamily = async (): Promise<FamilyJSON> => {
-  if (cachedFamilyJson !== null) return cachedFamilyJson;
+  if (cachedFamilyJson !== null && Date.now() - cachedFamilyJson.at < familyTTL)
+    return cachedFamilyJson.json;
   const familyRes = await fetcher(
     "https://family.jamesst.one/individualsAPI.json",
   );
 
-  cachedFamilyJson = await familyRes.json();
-  return cachedFamilyJson;
+  cachedFamilyJson = { json: await familyRes.json(), at: Date.now() };
+  return cachedFamilyJson.json;
 };
 export const loadFamily: Loader = async (
   dateRange,

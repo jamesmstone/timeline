@@ -9,18 +9,17 @@ import "vis-timeline/styles/vis-timeline-graph2d.css";
 // After vis's own sheet, so the theme overrides win on equal specificity.
 import "./styles.css";
 import { Graph2dOptions } from "vis-timeline/types";
-import * as moment from "moment-timezone";
+import moment from "moment-timezone";
 import { Interval, Range } from "./range";
 import { clearWaitingRequests } from "./fetcher";
 import {
-  loadHeartRate,
-  loadLastfm,
-  loadRead,
-  loadSleep,
-  loadSteps,
-  loadStressLevel,
-} from "./datasetteLoaders";
-import { loadFamily } from "./family";
+  GraphTimelineDataItem,
+  Group,
+  groups,
+  stackGroup,
+  TimelineDataItem,
+} from "./data";
+import { loadDataForDateRange } from "./loaders";
 import { drawExtremes, placeExtremes } from "./markers";
 
 const debounce = (func, timeout = 300) => {
@@ -32,75 +31,6 @@ const debounce = (func, timeout = 300) => {
     }, timeout);
   };
 };
-
-export const errorDataItem = (
-  { group, title, content }: Pick<DataItem, "group" | "title" | "content">,
-  { start, end }: Range,
-): DataItem => ({
-  group,
-  content,
-  title,
-  start: start.toDate(),
-  end: end.toDate(),
-});
-export const graphErrorDataItem = (
-  { group, title, content }: Pick<DataItem, "group" | "title" | "content">,
-  { start, end }: Range,
-): GraphDataItem => ({
-  group,
-  content,
-  title,
-  x: start.toDate(),
-  y: null,
-  start: start.toDate(),
-  end: end.toDate(),
-});
-
-const stackGroup = (group: Group): boolean => group !== "Music";
-
-export type GraphDataItem = DataItem & { x: DataItem["start"]; y: number };
-export type GraphTimelineDataItem = {
-  type: "graph";
-  data: GraphDataItem[];
-  graphOptions?: Partial<Graph2dOptions>;
-};
-export type TimelineDataItem = {
-  options: { dateRange: Range; search: string };
-  result:
-    | GraphTimelineDataItem
-    | {
-        type: "timeline";
-        data: DataItem[];
-      };
-};
-
-const loadDataForDateRange = async (
-  group: Group,
-  dateRange: Range,
-  search?: string,
-): Promise<TimelineDataItem> => {
-  switch (group) {
-    case "Music":
-      return await loadLastfm(dateRange, search);
-    case "Heart rate":
-      return await loadHeartRate(dateRange, search);
-    case "Stress level":
-      return await loadStressLevel(dateRange, search);
-    case "Steps":
-      return await loadSteps(dateRange, search);
-    case "Sleep":
-      return await loadSleep(dateRange, search);
-    case "Read":
-      return await loadRead(dateRange, search);
-    case "Family":
-      return await loadFamily(dateRange, search);
-  }
-};
-
-export type Loader = (
-  dateRange: Range,
-  search: string | undefined,
-) => Promise<TimelineDataItem>;
 
 const today = (): Range => ({
   start: moment.tz("UTC").startOf("day"),
@@ -125,17 +55,6 @@ type Preset = keyof typeof presets;
 
 const initPreset: Preset = "week";
 const initRange = presets[initPreset]();
-
-const groups = [
-  "Heart rate",
-  "Stress level",
-  "Sleep",
-  "Steps",
-  "Music",
-  "Family",
-  "Read",
-] as const;
-export type Group = (typeof groups)[number];
 
 type Line = {
   group: Group;

@@ -1,12 +1,12 @@
 import { Graph2d, Timeline } from "vis-timeline/peer";
-import * as moment from "moment-timezone";
-import { GraphDataItem, TimelineDataItem } from "./main";
+import moment from "moment-timezone";
+import { GraphDataItem, TimelineDataItem } from "./data";
 
-type Extreme = { kind: "high" | "low"; value: number; at: number };
+export type Extreme = { kind: "high" | "low"; value: number; at: number };
 
 const aDay = 24 * 60 * 60 * 1000;
 
-const stampFormat = (span: number): string => {
+export const stampFormat = (span: number): string => {
   if (span <= 2 * aDay) return "HH:mm";
   if (span <= 70 * aDay) return "D MMM";
   return "MMM YY";
@@ -14,7 +14,7 @@ const stampFormat = (span: number): string => {
 
 // Loaders fetch whole months around the window, so an unfiltered peak is
 // often one the viewer cannot see.
-const extremes = (
+export const extremes = (
   data: GraphDataItem[],
   range: { start: Date; end: Date },
 ): Extreme[] => {
@@ -34,7 +34,7 @@ const extremes = (
   ];
 };
 
-const round = (value: number): string =>
+export const round = (value: number): string =>
   (Math.abs(value) < 10
     ? Math.round(value * 10) / 10
     : Math.round(value)

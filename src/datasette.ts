@@ -1,6 +1,6 @@
 import { fetcher } from "./fetcher";
 import { Range } from "./range";
-import * as moment from "moment";
+import moment from "moment";
 
 const parseLinkHeader = (link: string): Record<string, string> => {
   const linkexp =
