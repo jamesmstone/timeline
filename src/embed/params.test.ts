@@ -80,6 +80,15 @@ describe("time range", () => {
     expect(ok("start=2026-10-01T02:00:00+0200&end=now").start).toEqual(
       new Date("2026-10-01T00:00:00Z"),
     );
+    expect(ok("start=2026-10-01T02:00+02:00&end=now").start).toEqual(
+      new Date("2026-10-01T00:00:00Z"),
+    );
+  });
+
+  test("a form-encoded space before the time is not an offset", () => {
+    expect(ok("start=2026-10-01+02:00&end=now").start).toEqual(
+      new Date("2026-10-01T02:00:00Z"),
+    );
   });
 
   test("an empty parameter is the same as a missing one", () => {
