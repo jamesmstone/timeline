@@ -1,7 +1,6 @@
 import moment from "moment";
 
 export type Layout = "horizontal" | "vertical";
-export type Theme = "light" | "dark" | "auto";
 
 export type EmbedParams = {
   start: Date;
@@ -9,7 +8,6 @@ export type EmbedParams = {
   width: number;
   height: number;
   layout: Layout;
-  theme: Theme;
 };
 
 export type Parsed =
@@ -133,11 +131,6 @@ export const parseEmbedParams = (query: URLSearchParams, now: Date): Parsed => {
           : resolvedWidth < verticalBelow
             ? "vertical"
             : "horizontal";
-    const theme =
-      optional(query, "theme", (v) =>
-        oneOf("theme", v, ["light", "dark", "auto"] as const),
-      ) ?? "light";
-
     return {
       ok: true,
       params: {
@@ -148,7 +141,6 @@ export const parseEmbedParams = (query: URLSearchParams, now: Date): Parsed => {
             ? defaultHeight(layout, resolvedWidth)
             : clampSize(Math.round(height)),
         layout,
-        theme,
       },
     };
   } catch (e) {

@@ -92,13 +92,12 @@ describe("time range", () => {
 });
 
 describe("canvas", () => {
-  test("defaults to a wide horizontal light chart", () => {
-    const { width, height, layout, theme } = ok("");
-    expect({ width, height, layout, theme }).toEqual({
+  test("defaults to a wide horizontal chart", () => {
+    const { width, height, layout } = ok("");
+    expect({ width, height, layout }).toEqual({
       width: 1200,
       height: 520,
       layout: "horizontal",
-      theme: "light",
     });
   });
 
@@ -135,9 +134,8 @@ describe("canvas", () => {
     expect(ok("width=640.6px").width).toBe(641);
   });
 
-  test("themes", () => {
-    expect(ok("theme=dark").theme).toBe("dark");
-    expect(ok("theme=auto").theme).toBe("auto");
+  test("theme is not a parameter", () => {
+    expect(ok("theme=dark")).toEqual(ok(""));
   });
 
   test.each([
@@ -145,7 +143,6 @@ describe("canvas", () => {
     ["height=-5", "height must be a number"],
     ["maxWidth=50%25", "maxWidth must be a number"],
     ["layout=diagonal", "layout must be one of"],
-    ["theme=neon", "theme must be one of"],
   ])("rejects %s", (query, message) => {
     expect(error(query)).toContain(message);
   });

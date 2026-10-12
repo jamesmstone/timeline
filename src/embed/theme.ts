@@ -1,5 +1,4 @@
 import { Group } from "../data";
-import { Theme } from "./params";
 
 type Palette = {
   surface: string;
@@ -81,11 +80,11 @@ const rules = (p: Palette): string =>
     ),
   ].join("");
 
-export const stylesheet = (theme: Theme): string =>
+// An embed sits on other people's pages, so it takes its scheme from the
+// reader's preference: light unless they ask for dark.
+export const stylesheet = (): string =>
   [
     `text{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;stroke:none}`,
-    theme === "dark" ? rules(dark) : rules(light),
-    theme === "auto"
-      ? `@media (prefers-color-scheme:dark){${rules(dark)}}`
-      : "",
+    rules(light),
+    `@media (prefers-color-scheme:dark){${rules(dark)}}`,
   ].join("");

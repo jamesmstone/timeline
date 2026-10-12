@@ -375,7 +375,9 @@ const peakMarkers = (
       const stamp = withStamp ? moment.utc(at).format(format) : "";
       const size = 8.5;
       const width =
-        textWidth(reading, size) + (stamp ? textWidth(stamp, size) + 4 : 0) + 10;
+        textWidth(reading, size) +
+        (stamp ? textWidth(stamp, size) + 4 : 0) +
+        10;
       const height = 14;
       const { box } = f;
       let cx: number;
@@ -517,7 +519,7 @@ const laneBody = (
 
 export const renderEmbed = (
   lanes: LaneData[],
-  { start, end, width: W, height: H, layout, theme }: EmbedParams,
+  { start, end, width: W, height: H, layout }: EmbedParams,
   now: Date,
 ): string => {
   const horizontal = layout === "horizontal";
@@ -752,7 +754,7 @@ export const renderEmbed = (
       },
       el("title", { id: "title" }, escapeXml(`Timeline, ${label}`)),
       el("desc", { id: "desc" }, escapeXml(describe(ordered, ctx, label))),
-      el("style", {}, stylesheet(theme)),
+      el("style", {}, stylesheet()),
       rect(
         { x: 0.5, y: 0.5, w: W - 1, h: H - 1 },
         { rx: 14, class: "card", "stroke-width": 1 },

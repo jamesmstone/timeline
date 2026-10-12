@@ -9,7 +9,6 @@ const params = (overrides: Partial<EmbedParams> = {}): EmbedParams => ({
   width: 1200,
   height: 520,
   layout: "horizontal",
-  theme: "light",
   ...overrides,
 });
 
@@ -85,14 +84,11 @@ test("lays a vertical chart out down the page, not stretched", () => {
   expect(vertical).not.toContain("rotate(-90");
 });
 
-test("follows the reader's colour scheme only when asked", () => {
-  expect(renderEmbed(lanes, params(), now)).not.toContain("@media");
-  expect(renderEmbed(lanes, params({ theme: "auto" }), now)).toContain(
-    "@media (prefers-color-scheme:dark)",
-  );
-  expect(renderEmbed(lanes, params({ theme: "dark" }), now)).toContain(
-    ".card{fill:#0b111c",
-  );
+test("is light unless the reader's colour scheme is dark", () => {
+  const style = root(renderEmbed(lanes, params(), now)).style as string;
+  const [base, dark] = style.split("@media (prefers-color-scheme:dark)");
+  expect(base).toContain(".card{fill:#ffffff");
+  expect(dark).toContain(".card{fill:#0b111c");
 });
 
 test("draws an empty week without failing", () => {

@@ -30,7 +30,6 @@ to embed:
 | `maxWidth` | Caps `width`, or sets it when `width` is absent; `600px` and `600` both work.                        |
 | `height`   | Canvas height in pixels, 200 to 2400. Defaults to suit the layout.                                   |
 | `layout`   | `horizontal`, `vertical` or `auto` (the default): vertical when taller than wide, or under 640 wide. |
-| `theme`    | `light` (the default), `dark`, or `auto` to follow the reader's colour scheme.                       |
 
 `start` and `end` together win; otherwise one of them plus `duration`
 (default a week); with neither, the week ending now. Times are UTC, and a
