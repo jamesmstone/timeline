@@ -24,6 +24,6 @@
   },
   "source": "src/index.html",
   "overrides": {
-    "@swc/core": "1.16.2"
+    "@swc/core": "1.16.18"
   }
 }
