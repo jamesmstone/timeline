@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { XMLParser, XMLValidator } from "fast-xml-parser";
+import { groups } from "../data";
 import { lanes, now, range } from "./fixtures";
 import { EmbedParams } from "./params";
 import { renderEmbed } from "./render";
@@ -73,15 +74,47 @@ test("says how many stacked items it had no room for", () => {
   expect(renderEmbed(lanes, params(), now)).toMatch(/\+\d+ more/);
 });
 
-test("lays a vertical chart out down the page, not stretched", () => {
-  const horizontal = renderEmbed(lanes, params(), now);
-  const vertical = renderEmbed(
-    lanes,
-    params({ width: 600, height: 900, layout: "vertical" }),
-    now,
+const distinct = (values: number[]) => new Set(values).size === values.length;
+const same = (values: number[]) => new Set(values).size === 1;
+
+const layout = (overrides: Partial<EmbedParams>) => {
+  const svg = root(renderEmbed(lanes, params(overrides), now));
+  const pills = (svg.g as { class: string; rect: unknown }[])
+    .filter((g) => g.class.startsWith("g-"))
+    .map((g) => [g.rect].flat()[0] as { x: string; y: string })
+    .map(({ x, y }) => ({ x: Number(x), y: Number(y) }));
+  const ticks = (svg.text as { "#text": string; x: string; y: string }[])
+    .filter((t) => /^\w{3} \d+$/.test(t["#text"]))
+    .map(({ x, y }) => ({ x: Number(x), y: Number(y) }));
+  return { pills, ticks };
+};
+
+test("stacks a horizontal chart's lanes down the page, time across", () => {
+  const { pills, ticks } = layout({});
+  expect(pills).toHaveLength(groups.length);
+  expect(same(pills.map((p) => p.x)) && distinct(pills.map((p) => p.y))).toBe(
+    true,
   );
-  expect(horizontal).toContain("rotate(-90");
-  expect(vertical).not.toContain("rotate(-90");
+  expect(ticks.length).toBeGreaterThan(2);
+  expect(same(ticks.map((t) => t.y)) && distinct(ticks.map((t) => t.x))).toBe(
+    true,
+  );
+});
+
+test("lays a vertical chart's lanes across the page, time down", () => {
+  const { pills, ticks } = layout({
+    width: 600,
+    height: 900,
+    layout: "vertical",
+  });
+  expect(pills).toHaveLength(groups.length);
+  expect(same(pills.map((p) => p.y)) && distinct(pills.map((p) => p.x))).toBe(
+    true,
+  );
+  expect(ticks.length).toBeGreaterThan(2);
+  expect(same(ticks.map((t) => t.x)) && distinct(ticks.map((t) => t.y))).toBe(
+    true,
+  );
 });
 
 test("is light unless the reader's colour scheme is dark", () => {

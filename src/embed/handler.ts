@@ -1,6 +1,5 @@
 import { parseEmbedParams } from "./params";
 import { LaneData, renderEmbed } from "./render";
-import { el, escapeXml, text } from "./svg";
 
 export type LoadLanes = (range: {
   start: Date;
@@ -26,52 +25,6 @@ const imageHeaders = {
   "Cross-Origin-Resource-Policy": "cross-origin",
 };
 
-// An <img> shows a 400's body when it is an image, so the reason lands where
-// the embedder is looking instead of as a broken-image icon.
-const errorImage = (message: string): string =>
-  el(
-    "svg",
-    {
-      xmlns: "http://www.w3.org/2000/svg",
-      width: 480,
-      height: 60,
-      viewBox: "0 0 480 60",
-      role: "img",
-      "aria-labelledby": "title",
-    },
-    el("title", { id: "title" }, escapeXml(`Timeline: ${message}`)),
-    el("rect", {
-      x: 0.5,
-      y: 0.5,
-      width: 479,
-      height: 59,
-      rx: 10,
-      fill: "#fff",
-      stroke: "#d3dae5",
-    }),
-    text(
-      {
-        x: 16,
-        y: 26,
-        "font-size": 13,
-        "font-weight": 700,
-        fill: "#0f172a",
-        "font-family": "sans-serif",
-      },
-      "Timeline embed",
-    ),
-    text(
-      {
-        x: 16,
-        y: 44,
-        "font-size": 11,
-        fill: "#5b6b7c",
-        "font-family": "sans-serif",
-      },
-      message,
-    ),
-  );
-
 export const createEmbedHandler =
   ({ load, now = () => new Date() }: { load: LoadLanes; now?: () => Date }) =>
   async (request: Request): Promise<Response> => {
@@ -92,8 +45,11 @@ export const createEmbedHandler =
     const parsed = parseEmbedParams(url.searchParams, current);
     if (!parsed.ok)
       return new Response(
-        request.method === "HEAD" ? null : errorImage(parsed.error),
-        { status: 400, headers: imageHeaders },
+        request.method === "HEAD" ? null : `${parsed.error}\n`,
+        {
+          status: 400,
+          headers: { ...cors, "Content-Type": "text/plain; charset=utf-8" },
+        },
       );
     const { start, end } = parsed.params;
     const svg = renderEmbed(await load({ start, end }), parsed.params, current);

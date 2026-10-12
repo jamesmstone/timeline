@@ -57,16 +57,15 @@ describe("GET /embed.svg", () => {
     expect(wide).toContain('width="1200"');
   });
 
-  test("answers bad parameters with a 400 image naming the problem", async () => {
+  test("answers bad parameters with a plain-text 400 naming the problem", async () => {
     const { requested, get } = setup();
     const response = await get("/embed.svg?duration=forever");
     expect(response.status).toBe(400);
     expect(response.headers.get("content-type")).toBe(
-      "image/svg+xml; charset=utf-8",
+      "text/plain; charset=utf-8",
     );
-    const body = await response.text();
-    expect(XMLValidator.validate(body)).toBe(true);
-    expect(body).toContain("duration must be");
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(await response.text()).toContain("duration must be");
     expect(requested).toEqual([]);
   });
 

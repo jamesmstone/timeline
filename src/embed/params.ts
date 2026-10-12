@@ -38,7 +38,8 @@ class ParamError extends Error {}
 
 const parseTime = (name: string, value: string, now: Date): Date => {
   if (value.toLowerCase() === "now") return now;
-  const parsed = moment.utc(value, moment.ISO_8601, true);
+  const iso = value.replace(/ (\d{2}:?\d{2})$/, "+$1");
+  const parsed = moment.utc(iso, moment.ISO_8601, true);
   if (!parsed.isValid())
     throw new ParamError(`${name} must be an ISO 8601 time or "now"`);
   return parsed.toDate();
