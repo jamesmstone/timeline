@@ -6,7 +6,7 @@ import {
   Group,
   Loader,
   TimelineDataItem,
-} from "./main";
+} from "./data";
 import {
   capNow,
   chunkRange,
@@ -21,7 +21,7 @@ import {
   Range,
 } from "./range";
 import { DataItem } from "vis-timeline";
-import * as moment from "moment";
+import moment from "moment";
 import { addTTL, datasetteFetch } from "./datasette";
 
 type Search = string | undefined;
@@ -394,6 +394,9 @@ type DatasetteOptions<
   graphOptions: GraphTimelineDataItem["graphOptions"];
   aggregateFunction: AggregateFunction;
   start: moment.Moment;
+  // Leave unset for a source that is still recording: moment compares an
+  // undefined bound against now at query time, whereas a moment() here would
+  // freeze at module load and blind the long-running embed server.
   end: moment.Moment;
   summaryContentFormatter: (
     summary: Summary,
@@ -482,7 +485,6 @@ export const loadRead: Loader = getDatasetteLoader<readDetail, readSummary>({
               from read)`,
   group: "Read",
   start: moment("2012-10-01"),
-  end: moment(),
   detailContentFormatter: (detail) => {
     const truncatedTitle = detail.title.slice(0, 30);
     return `<img height="34px" alt="${
@@ -542,7 +544,6 @@ export const loadLastfm: Loader = getDatasetteLoader<
               from listen_details)`,
   group: "Music",
   start: moment("2012-10-01"),
-  end: moment(),
   detailContentFormatter: (listenDetail) => {
     return `<img height="34px" alt="${listenDetail.name}" loading="lazy" src="${listenDetail.image[0]["#text"]}"/>${listenDetail.name} ${listenDetail["name:1"]} `;
   },
@@ -580,7 +581,6 @@ const getGarminLoader = ({
     graphOptions: { style: "line" },
     aggregateFunction,
     start,
-    end: moment(),
     detailContentFormatter: (detail, { group }) =>
       group + " " + detail.date_time,
     detailTitleFormatter: (detail, { group }) => group + " " + detail.date_time,
@@ -644,7 +644,6 @@ export const loadSleep: Loader = getDatasetteLoader<sleepDetail, BaseSummary>({
                             and total_sleep > '00:00:00')`,
   group: "Sleep",
   start: moment("2016-06-03"),
-  end: moment(),
   aggregateFunction: "avg",
   detailContentFormatter: ({ value, qualifier }) =>
     qualifier === null
