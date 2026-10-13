@@ -19,6 +19,11 @@ bun2nix.mkDerivation {
 
   nativeBuildInputs = [ nodejs ];
 
+  # @swc/core >= 1.16.17 refuses to unpack its native addon under a cache root
+  # whose ancestors another user could write to, which rejects every path in
+  # the build sandbox; the sandbox is single-tenant, so the check buys nothing.
+  env.SWC_NATIVE_BINDING_CACHE_SKIP_SECURITY_CHECK = "1";
+
   # Parcel's prebuilt napi bindings dlopen libstdc++, which bun — unlike
   # node — does not already have loaded.
   buildPhase = ''
