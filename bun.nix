@@ -789,9 +789,9 @@
     url = "https://registry.npmjs.org/vis-data/-/vis-data-8.0.5.tgz";
     hash = "sha512-tRQKcTGaclo60rTY1j4v7BgD9v5jfD3wl+JgR1q6I4AI7go3QH5OjMCLIuZPpL2sf4IRMlwyPlRLnK4m+Phjsw==";
   };
-  "vis-timeline@8.4.0" = fetchurl {
-    url = "https://registry.npmjs.org/vis-timeline/-/vis-timeline-8.4.0.tgz";
-    hash = "sha512-kOA+s2tog7OTW8vOXvs/0s6r6MS0694HWaAqO/The6KkhfleThgKP5zKrM6zUfiCkFQlvxyO3BtsBBaaj9Hjew==";
+  "vis-timeline@8.5.6" = fetchurl {
+    url = "https://registry.npmjs.org/vis-timeline/-/vis-timeline-8.5.6.tgz";
+    hash = "sha512-Ga0ZkqZrcdB+oW7eRVLfZgw9JmjUnCrQ6zdK3uAso39210fKLmvtUAXPHeNnZpOYnrQDqSYPkXjfJMD9jE5mhQ==";
   };
   "vis-util@6.0.2" = fetchurl {
     url = "https://registry.npmjs.org/vis-util/-/vis-util-6.0.2.tgz";
