@@ -14,7 +14,7 @@ CREATE OR REPLACE TABLE lanes AS SELECT * FROM (VALUES
 -- Level lanes are drawn against a fixed range so bars keep their height while
 -- the window pans; the tails are clipped so one outlier day cannot flatten the
 -- rest.
-CREATE OR REPLACE TABLE lane_scale AS
+CREATE OR REPLACE VIEW lane_scale AS
   SELECT 'sleep' AS lane, 0.0 AS vmin, coalesce(max(value), 12.0) AS vmax
     FROM lane_points WHERE lane = 'sleep'
   UNION ALL

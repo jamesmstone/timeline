@@ -56,7 +56,7 @@
       from: +svg.dataset.from,
       to: +svg.dataset.to,
       span: +svg.dataset.span,
-      w: viewport.clientWidth,
+      w: svg.viewBox.baseVal.width,
     };
     state.vstart = state.from + state.span;
     let token = 0;
