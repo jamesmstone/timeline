@@ -3,6 +3,7 @@
   pkgs,
   system,
   duckweb,
+  duckwebModule,
 }:
 let
   site = self.packages.${system};
@@ -32,7 +33,10 @@ pkgs.testers.runNixOSTest {
   nodes.machine =
     { ... }:
     {
-      imports = [ self.nixosModules.default ];
+      imports = [
+        self.nixosModules.default
+        duckwebModule
+      ];
 
       virtualisation.graphics = false;
       virtualisation.memorySize = 2048;
@@ -86,7 +90,10 @@ pkgs.testers.runNixOSTest {
   nodes.lean =
     { ... }:
     {
-      imports = [ self.nixosModules.default ];
+      imports = [
+        self.nixosModules.default
+        duckwebModule
+      ];
       virtualisation.graphics = false;
       virtualisation.memorySize = 2048;
       environment.systemPackages = [ pkgs.curl ];

@@ -110,7 +110,10 @@
       # the public instance: duckweb answering from SQL over the public-safe
       # sources, with the lane timeline at `/`; `services.timeline-private` is the
       # tailnet instance over every source. `assets`, `app`, `garmin-public`,
-      # `garmin-empty` and `purifier-snapshot` are what they run.
+      # `garmin-empty` and `purifier-snapshot` are what they run. The module does
+      # not import duckweb's NixOS module: both instances set `services.duckweb`,
+      # so the consuming configuration must import
+      # `inputs.duckweb.nixosModules.duckweb` itself.
       packages = eachSystem (
         system:
         {
@@ -125,7 +128,6 @@
         {
           imports = [
             ./module.nix
-            inputs.duckweb.nixosModules.duckweb
             (import ./site-module.nix {
               self = inputs.self;
               duckweb = inputs.duckweb;
@@ -148,6 +150,7 @@
             pkgs = pkgsFor.${system};
             inherit system;
             duckweb = inputs.duckweb.packages.${system};
+            duckwebModule = inputs.duckweb.nixosModules.duckweb;
           };
           site-assets = inputs.self.packages.${system}.assets;
         }
@@ -159,6 +162,7 @@
               inherit system;
               modules = [
                 inputs.self.nixosModules.default
+                inputs.duckweb.nixosModules.duckweb
                 {
                   services.timeline-embed.enable = true;
                   boot.isContainer = true;

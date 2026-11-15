@@ -53,6 +53,10 @@ it by moving the viewBox, fetching a fresh window from `/lanes.svg` near an edge
 Without script the page is the same drawing at a fixed range, navigable by the
 zoom links. `/sql` runs one read-only `SELECT` per request.
 
+`nixosModules.default` does not import duckweb's NixOS module; the instances set
+`services.duckweb`, so the consuming configuration must import
+`duckweb.nixosModules.duckweb` itself.
+
 The attach set is the permission boundary. The process is handed only the
 `services.timeline.sources` files and a Garmin file produced by
 `timeline-garmin-public`, which keeps sleep nights and daily aggregates and
