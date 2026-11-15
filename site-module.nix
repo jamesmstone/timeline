@@ -27,6 +27,14 @@ let
   attaches = lib.mapAttrsToList (
     name: path: "ATTACH ${sqlStr path} AS ${name} (TYPE sqlite, READ_ONLY)"
   ) (cfg.sources // { garmin = garminDb; });
+
+  rollup = import ./nix/garmin-rollup.nix {
+    exe = lib.getExe site.garmin-public;
+    name = "timeline-garmin";
+    stateName = "timeline";
+    inherit (cfg.garmin) snapshotDir groups schedule;
+    out = "${cfg.garmin.stateDirectory}/garmin-public.sqlite";
+  };
 in
 {
   options.services.timeline = {
@@ -117,8 +125,6 @@ in
     };
   };
 
-  imports = [ duckweb.nixosModules.duckweb ];
-
   config = lib.mkIf cfg.enable {
     services.duckweb.enable = true;
     services.duckweb.servers.timeline = {
@@ -135,8 +141,12 @@ in
       ]
       ++ attaches
       ++ [
-        ".read ${site.app}/views.sql"
-        ".read ${site.app}/app.sql"
+        ".read ${site.app}/views-shared.sql"
+        ".read ${site.app}/views-garmin.sql"
+        ".read ${site.app}/lanes-public.sql"
+        ".read ${site.app}/instance-public.sql"
+        ".read ${site.app}/core.sql"
+        ".read ${site.app}/routes-public.sql"
         # Last, so everything above could still read files. duckweb_serve runs
         # after setup and sets preserve_insertion_order itself, which a locked
         # configuration refuses, so the lock is not taken; the SQL box only ever
@@ -154,61 +164,14 @@ in
     systemd.services.duckweb-timeline = {
       wants = lib.mkIf cfg.garmin.enable [ "timeline-garmin-public.service" ];
       after = lib.mkIf cfg.garmin.enable [ "timeline-garmin-public.service" ];
-      serviceConfig = {
-        StateDirectory = "timeline-web";
+      serviceConfig = (import ./nix/hardening.nix) // {
         CPUQuota = cfg.cpuQuota;
-        TasksMax = 256;
-        NoNewPrivileges = true;
-        PrivateTmp = true;
-        PrivateDevices = true;
-        ProtectSystem = "strict";
-        ProtectHome = true;
-        ProtectKernelTunables = true;
-        ProtectKernelModules = true;
-        ProtectControlGroups = true;
-        RestrictAddressFamilies = [
-          "AF_INET"
-          "AF_INET6"
-          "AF_UNIX"
-        ];
       };
     };
 
-    systemd.services.timeline-garmin-public = lib.mkIf cfg.garmin.enable {
-      description = "timeline: publish sanitised Garmin rollups";
-      serviceConfig = {
-        Type = "oneshot";
-        ExecStart = "${lib.getExe site.garmin-public} ${cfg.garmin.snapshotDir} ${cfg.garmin.stateDirectory}/garmin-public.sqlite";
-        # Not DynamicUser: its state directory lives under the 0700 /var/lib/private,
-        # which the server's own dynamic user could not traverse to read the result.
-        User = "timeline-garmin";
-        Group = "timeline-garmin";
-        SupplementaryGroups = cfg.garmin.groups;
-        StateDirectory = "timeline";
-        StateDirectoryMode = "0755";
-        UMask = "0022";
-        # Reads one directory and writes one file; it never needs the network.
-        PrivateNetwork = true;
-        NoNewPrivileges = true;
-        PrivateTmp = true;
-        PrivateDevices = true;
-        ProtectSystem = "strict";
-        ProtectHome = true;
-      };
-    };
-
-    users.users.timeline-garmin = lib.mkIf cfg.garmin.enable {
-      isSystemUser = true;
-      group = "timeline-garmin";
-    };
+    systemd.services.timeline-garmin-public = lib.mkIf cfg.garmin.enable rollup.service;
+    users.users.timeline-garmin = lib.mkIf cfg.garmin.enable rollup.user;
     users.groups.timeline-garmin = lib.mkIf cfg.garmin.enable { };
-
-    systemd.timers.timeline-garmin-public = lib.mkIf cfg.garmin.enable {
-      wantedBy = [ "timers.target" ];
-      timerConfig = {
-        OnCalendar = cfg.garmin.schedule;
-        Persistent = true;
-      };
-    };
+    systemd.timers.timeline-garmin-public = lib.mkIf cfg.garmin.enable rollup.timer;
   };
 }

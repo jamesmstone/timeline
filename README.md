@@ -61,7 +61,34 @@ switched off before the first request (DuckDB cannot turn it back on), and the u
 is capped by `MemoryMax`, `CPUQuota` and DuckDB's `memory_limit`. DuckDB has no
 statement timeout, so those caps are the limit on an expensive query.
 
-`nix flake check` boots the module in a NixOS VM (`checks.<system>.site-vm`)
+## Private instance
+
+`services.timeline-private` is the same lane timeline over every source, for the
+tailnet: `address` must be one interface (a wildcard fails evaluation) and no
+public name points at it. It attaches the public sources and the Garmin rollups,
+and for the SQL box the full Garmin snapshots (`garmin_full`, `garmin_summary`,
+`garmin_activities`, `garmin_monitoring`), the chat snapshot (`chat`, a copy of
+Synapse's database), optionally the chat `archive`, and `purifier`. It runs as
+its own unit with its own state, looser caps, and the supplementary groups its
+files need.
+
+Two more lanes, chat volume and PM2.5, join the public ones. `/chat` shows
+message counts by network and never a body; bodies are reachable through
+`/chat/search?q=` (a plain substring of at least three characters, the newest
+50 matches) and the SQL box (`chat_messages`). The public instance has neither
+route.
+
+The purifier recorder opens its DuckDB file read-write every minute, and a
+reader's lock makes that tick fail, so the server never holds it. It attaches
+`purifier.snapshot`, a SQLite file, which `timeline-purifier-snapshot
+<status.duckdb> <out.sqlite>` writes by copy-then-rename; evaluation fails if
+that option names a `.duckdb` file. The units that run the snapshot, and the
+Garmin and chat snapshots arriving, are the host's: the server waits up to a
+minute for its files at start and retries every 30 seconds after that.
+
+`nix flake check` boots both modules in one NixOS VM (`checks.<system>.site-vm`)
 over fixture databases, and asserts the lanes draw, the Garmin file carries no
-location, and the SQL box refuses writes, file access, `ATTACH` and
-reconfiguration. `bun test web` covers the pan arithmetic.
+location, the SQL box refuses writes, file access, `ATTACH` and reconfiguration,
+the private instance sees the private catalogs and the public one still does
+not, and no body, archive row or coordinate reaches a lane or the chat page.
+`bun test web` covers the pan arithmetic.

@@ -81,6 +81,7 @@
           inherit (built) assets app;
           garmin-public = built.garminPublic;
           garmin-empty = built.emptyGarmin;
+          purifier-snapshot = built.purifierSnapshot;
         };
     in
     {
@@ -107,8 +108,9 @@
       #
       # On x86_64-linux `nixosModules.default` also carries `services.timeline`,
       # the public instance: duckweb answering from SQL over the public-safe
-      # sources, with the lane timeline at `/`. `assets`, `app`, `garmin-public`
-      # and `garmin-empty` are what it runs.
+      # sources, with the lane timeline at `/`; `services.timeline-private` is the
+      # tailnet instance over every source. `assets`, `app`, `garmin-public`,
+      # `garmin-empty` and `purifier-snapshot` are what they run.
       packages = eachSystem (
         system:
         {
@@ -123,7 +125,12 @@
         {
           imports = [
             ./module.nix
+            inputs.duckweb.nixosModules.duckweb
             (import ./site-module.nix {
+              self = inputs.self;
+              duckweb = inputs.duckweb;
+            })
+            (import ./private-module.nix {
               self = inputs.self;
               duckweb = inputs.duckweb;
             })
