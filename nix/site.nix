@@ -51,6 +51,40 @@ let
     '';
   };
 
+  # The recorder opens its DuckDB file read-write every minute and a reader's
+  # lock fails that tick, so this holds the live file only for one copy and
+  # retries if the recorder has it. The server only ever sees the result.
+  purifierSnapshot = writeShellApplication {
+    name = "timeline-purifier-snapshot";
+    runtimeInputs = [
+      coreutils
+      duckdb
+    ];
+    text = ''
+      usage="usage: timeline-purifier-snapshot <status.duckdb> <out.sqlite>"
+      live=''${1:?$usage}
+      out=''${2:?$usage}
+      tmp="$out.tmp"
+
+      cd ${appSrc}/app
+      for attempt in 1 2 3 4 5; do
+        rm -f "$tmp"
+        if duckdb -unsigned -noheader -list \
+          -cmd "LOAD '${sqliteScanner}/sqlite_scanner.duckdb_extension'" \
+          -cmd "SET VARIABLE live = '$live'" \
+          -cmd "SET VARIABLE out = '$tmp'" \
+          -f purifier-snapshot.sql; then
+          mv -f "$tmp" "$out"
+          exit 0
+        fi
+        echo "attempt $attempt failed, retrying" >&2
+        sleep 2
+      done
+      rm -f "$tmp"
+      exit 1
+    '';
+  };
+
   emptyGarmin = runCommand "timeline-garmin-empty.sqlite" { nativeBuildInputs = [ duckdb ]; } ''
     cd ${appSrc}/app
     duckdb -unsigned -noheader -list \
@@ -61,7 +95,7 @@ let
   '';
 in
 {
-  inherit garminPublic emptyGarmin;
+  inherit garminPublic purifierSnapshot emptyGarmin;
 
   # Served under /_duckweb/ by duckweb itself: the stylesheet, its fonts and
   # the pan script. The design library's fonts are referenced as ../fonts/, so

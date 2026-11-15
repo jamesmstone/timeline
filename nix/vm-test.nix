@@ -7,7 +7,7 @@
 let
   site = self.packages.${system};
 
-  fixtures = pkgs.runCommand "timeline-fixtures" { nativeBuildInputs = [ duckweb.duckdbStatic ]; } ''
+  fixtures = pkgs.runCommand "timeline-fixtures" { nativeBuildInputs = [ duckweb.duckdbStatic pkgs.sqlite ]; } ''
     mkdir -p $out/garmin
     run() {
       duckdb -unsigned -noheader -list \
@@ -16,6 +16,9 @@ let
     }
     run $out ${../test/fixtures.sql}
     run $out/garmin ${../test/garmin.sql}
+    run $out ${../test/private.sql}
+    sqlite3 $out/chat.db < ${../test/chat.sqlite.sql}
+    ${pkgs.lib.getExe site.purifier-snapshot} $out/status.duckdb $out/purifier.sqlite
   '';
 
   # January 2026 whole, where 601 plays force density bars, and the 4th to the
@@ -24,7 +27,7 @@ let
   fortnight = "from=1767571200&to=1768867200&span=1296000&at=1767571200";
 in
 pkgs.testers.runNixOSTest {
-  name = "timeline-public-site";
+  name = "timeline-sites";
 
   nodes.machine =
     { ... }:
@@ -37,6 +40,8 @@ pkgs.testers.runNixOSTest {
         pkgs.curl
         pkgs.sqlite
         pkgs.jq
+        duckweb.duckdbStatic
+        site.purifier-snapshot
       ];
 
       services.timeline = {
@@ -52,6 +57,28 @@ pkgs.testers.runNixOSTest {
           snapshotDir = "${fixtures}/garmin";
           groups = [ ];
         };
+      };
+
+      # Both instances on one host, as deployed: the public one must still not
+      # see what only the private one is handed.
+      services.timeline-private = {
+        enable = true;
+        port = 8792;
+        sources = {
+          lastfm = "${fixtures}/lastfm.db";
+          reading = "${fixtures}/readingList.db";
+          parkrun = "${fixtures}/parkruns.db";
+          chess = "${fixtures}/chess.db";
+        };
+        garmin = {
+          directory = "${fixtures}/garmin";
+          groups = [ ];
+        };
+        chat = {
+          snapshot = "${fixtures}/chat.db";
+          archive = "${fixtures}/archive.db";
+        };
+        purifier.snapshot = "${fixtures}/purifier.sqlite";
       };
     };
 
@@ -77,28 +104,30 @@ pkgs.testers.runNixOSTest {
   testScript = ''
     import json
 
-    def get(node, path, *flags):
-        return node.succeed(f"curl -sS {' '.join(flags)} 'http://127.0.0.1:8791{path}'")
+    def get(node, path, *flags, port=8791):
+        return node.succeed(f"curl -sS {' '.join(flags)} 'http://127.0.0.1:{port}{path}'")
 
-    def status(node, path):
+    def status(node, path, port=8791):
         return node.succeed(
-            f"curl -sS -o /dev/null -w '%{{http_code}}' 'http://127.0.0.1:8791{path}'"
+            f"curl -sS -o /dev/null -w '%{{http_code}}' 'http://127.0.0.1:{port}{path}'"
         ).strip()
 
     def enc(q):
         return q.replace(" ", "+").replace("'", "%27").replace(";", "%3B")
 
-    def sql(node, q):
-        return get(node, "/sql?q=" + enc(q))
+    def sql(node, q, port=8791):
+        return get(node, "/sql?q=" + enc(q), port=port)
 
-    def rows(node, q):
-        body = sql(node, q)
+    def rows(node, q, port=8791):
+        body = sql(node, q, port)
         inner = body.split("<pre data-result>", 1)[1].split("</pre>", 1)[0]
         return [json.loads(l.replace("&quot;", '"')) for l in inner.splitlines() if l]
 
     start_all()
     machine.wait_for_unit("duckweb-timeline.service")
     machine.wait_for_open_port(8791)
+    machine.wait_for_unit("duckweb-timeline-private.service")
+    machine.wait_for_open_port(8792)
     lean.wait_for_unit("duckweb-timeline.service")
     lean.wait_for_open_port(8791)
 
@@ -187,5 +216,97 @@ pkgs.testers.runNixOSTest {
         assert "data-lane=music" in svg and "data-lane=read" in svg
         assert "data-lane=sleep" not in svg
         assert status(lean, "/") == "200"
+
+    with subtest("the private instance sees the private sources and the public one does not"):
+        private_names = sorted(r["database_name"] for r in rows(machine, "select distinct database_name from duckdb_databases()", 8792))
+        assert private_names == [
+            "archive", "chat", "chess", "garmin", "garmin_activities", "garmin_full", "garmin_monitoring",
+            "garmin_summary", "lastfm", "memory", "parkrun", "purifier", "reading", "system", "temp",
+        ], private_names
+        # Full Garmin, GPS included, answers on the private box only.
+        assert rows(machine, "select canary from garmin_activities.activity_records", 8792) == [{"canary": "GPS-CANARY"}]
+        assert rows(machine, "select heart_rate from garmin_monitoring.monitoring_hr", 8792) == [{"heart_rate": 77}]
+        assert rows(machine, "select count(*) n from chat_events", 8792) == [{"n": 3}]
+        assert rows(machine, "select body from archive.archived", 8792) == [{"body": "ARCHIVE-CANARY"}]
+        assert rows(machine, "select count(*) n from purifier.status", 8792) == [{"n": 2}]
+        for q in [
+            "select * from garmin_activities.activity_records",
+            "select * from garmin_monitoring.monitoring_hr",
+            "select * from garmin_full.sleep",
+            "select * from chat.events",
+            "select * from chat_messages",
+            "select * from archive.archived",
+            "select * from purifier.status",
+            "select * from air_points",
+            "select * from chat_daily",
+        ]:
+            assert status(machine, "/sql?q=" + enc(q)) == "500", q
+            body = sql(machine, q)
+            assert "GPS-CANARY" not in body and "CHAT-BODY-CANARY" not in body and "ARCHIVE-CANARY" not in body, (q, body)
+
+    with subtest("the public instance has no chat or air routes, the private one does"):
+        for path in ["/chat", "/chat/search?q=needle"]:
+            assert status(machine, path) == "404", (path, get(machine, path)[:300])
+            assert status(machine, path, port=8792) == "200", (path, get(machine, path, port=8792)[:600])
+        public_page = get(machine, "/?span=345600&at=1767960000")
+        assert 'data-lane-label="chat"' not in public_page and 'data-lane-label="air"' not in public_page
+
+    with subtest("the private lane timeline draws chat and air next to the public lanes"):
+        page = get(machine, "/?span=345600&at=1767960000", port=8792)
+        for lane in ["music", "sleep", "chat", "air"]:
+            assert f'data-lane-label="{lane}"' in page, lane
+        svg = get(machine, "/lanes.svg?${fortnight}&w=1000", port=8792)
+        for lane in ["music", "read", "parkrun", "chess", "sleep", "heart", "steps", "chat", "air"]:
+            assert f"data-lane={lane}" in svg, lane
+        assert "whatsapp message" in svg
+        assert "PM2.5 12" in svg
+
+    with subtest("message bodies and coordinates stay off the pages and out of the lanes"):
+        for path in ["/", "/?span=all", "/lanes.svg?${fortnight}&w=1000", "/lanes.svg?${month}&w=1000", "/chat", "/chat/search"]:
+            body = get(machine, path, port=8792)
+            assert "CHAT-BODY-CANARY" not in body and "ARCHIVE-CANARY" not in body and "GPS-CANARY" not in body, path
+        assert "whatsapp" in get(machine, "/chat", port=8792)
+
+    with subtest("the explicit search route is the only page that shows bodies"):
+        found = get(machine, "/chat/search?q=NEEDLE", port=8792)
+        assert "CHAT-BODY-CANARY hello needle" in found, found
+        assert "unrelated" not in found
+        assert get(machine, "/chat/search?q=%3Cb%3Ereply", port=8792).count("<b>reply") == 0
+        assert "&lt;b&gt;reply&lt;/b&gt;" in get(machine, "/chat/search?q=%3Cb%3Ereply", port=8792)
+        # Too short a query is not a way to list everything; neither is a wildcard.
+        assert "data-match" not in get(machine, "/chat/search?q=ne", port=8792)
+        assert "data-match" not in get(machine, "/chat/search?q=%25%25%25", port=8792)
+        assert "data-match" not in get(machine, "/chat/search", port=8792)
+
+    with subtest("the private SQL box can read bodies but not write, read files or reconfigure"):
+        assert rows(machine, "select count(*) n from chat_messages where contains(body, 'CANARY')", 8792) == [{"n": 2}]
+        for q in [
+            "create table lanes2 as select 1",
+            "copy (select 1) to '/tmp/pwned-private.csv'",
+            "select * from read_text('/etc/passwd')",
+            "attach '${fixtures}/status.duckdb' as live",
+            "select * from read_blob('${fixtures}/status.duckdb')",
+            "set enable_external_access = true",
+        ]:
+            assert status(machine, "/sql?q=" + enc(q), port=8792) == "500", q
+        machine.fail("test -e /tmp/pwned-private.csv")
+
+    with subtest("the private instance never holds the live purifier file"):
+        # The recorder opens its file read-write each minute; a reader's lock
+        # would fail that tick, so a write must succeed while the server runs.
+        machine.succeed("cp ${fixtures}/status.duckdb /tmp/live.duckdb && chmod u+w /tmp/live.duckdb")
+        pid = machine.succeed("systemctl show -p MainPID --value duckweb-timeline-private.service").strip()
+        assert pid != "0"
+        machine.fail(f"ls -l /proc/{pid}/fd | grep -F status.duckdb")
+        machine.succeed("duckdb /tmp/live.duckdb \"insert into status values (now()::timestamp, true, 'auto', 5.0, 1)\"")
+        assert rows(machine, "select path from duckdb_databases() where database_name = 'purifier'", 8792) == [{"path": "${fixtures}/purifier.sqlite"}]
+        assert rows(machine, "select count(*) n from purifier.status", 8792) == [{"n": 2}]
+        machine.succeed("timeline-purifier-snapshot /tmp/live.duckdb /tmp/purifier.sqlite")
+        assert machine.succeed("sqlite3 /tmp/purifier.sqlite 'select count(*) from status'").strip() == "3"
+
+    with subtest("the private instance is capped by its own limits"):
+        show = machine.succeed("systemctl show duckweb-timeline-private.service -p MemoryMax -p CPUQuotaPerSecUSec")
+        assert "MemoryMax=3221225472" in show, show
+        assert "CPUQuotaPerSecUSec=4s" in show, show
   '';
 }

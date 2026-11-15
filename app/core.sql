@@ -1,28 +1,7 @@
--- timeline (public): the lane timeline over sources that are safe to publish.
--- Everything render reads is created here or in views.sql, before serving.
-
-CREATE OR REPLACE TABLE lanes AS SELECT * FROM (VALUES
-  ('music',   1, 'Music',      'events'),
-  ('read',    2, 'Read',       'events'),
-  ('parkrun', 3, 'Parkrun',    'events'),
-  ('chess',   4, 'Chess',      'events'),
-  ('sleep',   5, 'Sleep',      'level'),
-  ('heart',   6, 'Heart rate', 'level'),
-  ('steps',   7, 'Steps',      'level')
-) t(id, ord, label, kind);
-
--- Level lanes are drawn against a fixed range so bars keep their height while
--- the window pans; the tails are clipped so one outlier day cannot flatten the
--- rest.
-CREATE OR REPLACE VIEW lane_scale AS
-  SELECT 'sleep' AS lane, 0.0 AS vmin, coalesce(max(value), 12.0) AS vmax
-    FROM lane_points WHERE lane = 'sleep'
-  UNION ALL
-  SELECT 'heart', coalesce(quantile_cont(value, 0.01), 40.0), coalesce(quantile_cont(value, 0.99), 100.0)
-    FROM lane_points WHERE lane = 'heart'
-  UNION ALL
-  SELECT 'steps', 0.0, coalesce(quantile_cont(value, 0.99), 10000.0)
-    FROM lane_points WHERE lane = 'steps';
+-- The lane timeline and the routes both instances share. Each instance reads
+-- lane_points, lane_items, lane_scale and lanes from its own lanes-*.sql, and
+-- defines the macros named below in instance-*.sql:
+--   site_nav(here), home_intro(), home_sources(), sql_intro(), known(), render()
 
 CREATE OR REPLACE TABLE tick_units AS SELECT * FROM (VALUES
   (3600,      's', 3600,    'hm'),
@@ -46,6 +25,7 @@ CREATE OR REPLACE TABLE tick_units AS SELECT * FROM (VALUES
 CREATE OR REPLACE MACRO lane_h()   AS 56;
 CREATE OR REPLACE MACRO lane_pad() AS 6;
 CREATE OR REPLACE MACRO axis_h()   AS 28;
+CREATE OR REPLACE MACRO lanes_h()  AS axis_h() + (SELECT count(*) FROM lanes) * lane_h();
 -- Past this many events in a window a lane is drawn as density bars instead of
 -- one rectangle per event.
 CREATE OR REPLACE MACRO item_max() AS 400;
@@ -125,13 +105,13 @@ CREATE OR REPLACE MACRO lanes_svg(f, t, span, vstart, w) AS (
     WHERE un.kind = 'm' AND epoch(m) >= p.f),
   grid AS (
     SELECT '<line x1=' || printf('%.2f', (tk.ts - p.f) * p.u) || ' x2=' || printf('%.2f', (tk.ts - p.f) * p.u)
-           || ' y1=' || axis_h() - 6 || ' y2=' || (axis_h() + 7 * lane_h()) || '></line>'
+           || ' y1=' || axis_h() - 6 || ' y2=' || lanes_h() || '></line>'
            || '<text x=' || printf('%.2f', (tk.ts - p.f) * p.u + 4) || ' y=' || axis_h() - 10 || '>'
            || tick_label(epoch_ms(tk.ts * 1000), tk.fmt) || '</text>' AS el
     FROM ticks tk, p)
   SELECT '<svg xmlns="http://www.w3.org/2000/svg" role=img aria-label="Timeline lanes" data-timeline-svg'
     || ' data-from=' || p.f || ' data-to=' || p.t || ' data-span=' || p.span
-    || ' viewBox="' || printf('%.2f', (vstart - p.f) * p.u) || ' 0 ' || w || ' ' || (axis_h() + 7 * lane_h()) || '"'
+    || ' viewBox="' || printf('%.2f', (vstart - p.f) * p.u) || ' 0 ' || w || ' ' || lanes_h() || '"'
     || ' preserveAspectRatio="xMinYMin slice">'
     || '<g class=bands>'
     || (SELECT string_agg('<rect class=band x=0 width=' || printf('%.2f', (p.t - p.f) * p.u) || ' y=' || ((l.ord - 1) * lane_h() + axis_h())
@@ -147,13 +127,6 @@ CREATE OR REPLACE MACRO doc_open(title) AS (
   || '<link rel=stylesheet href="/_duckweb/design/css/style.css">'
   || '<link rel=stylesheet href="/_duckweb/timeline.css"></head><body>');
 
-CREATE OR REPLACE MACRO site_nav(here) AS (
-  '<a href="#main-content">Skip to main content</a><header data-site><nav aria-label=Main>'
-  || '<a href="/">timeline</a><ul>'
-  || '<li><a href="/"' || CASE WHEN here = '/' THEN ' aria-current=page' ELSE '' END || '>Lanes</a></li>'
-  || '<li><a href="/sql"' || CASE WHEN here = '/sql' THEN ' aria-current=page' ELSE '' END || '>SQL</a></li>'
-  || '</ul></nav></header>');
-
 -- The unit labels a duration is quoted in on the zoom links.
 CREATE OR REPLACE TABLE zooms AS SELECT * FROM (VALUES
   (1, '1 day',     86400),
@@ -165,15 +138,14 @@ CREATE OR REPLACE TABLE zooms AS SELECT * FROM (VALUES
 
 CREATE OR REPLACE MACRO lane_labels() AS (
   SELECT string_agg('<span data-lane-label="' || l.id || '" style="top:'
-           || printf('%.3f', 100.0 * (axis_h() + (l.ord - 1) * lane_h() + lane_pad()) / (axis_h() + 7 * lane_h()))
+           || printf('%.3f', 100.0 * (axis_h() + (l.ord - 1) * lane_h() + lane_pad()) / lanes_h())
            || '%">' || duckweb_escape(l.label) || '</span>', '' ORDER BY l.ord)
   FROM lanes l);
 
 CREATE OR REPLACE MACRO timeline_page(vstart, span) AS (
   doc_open('timeline') || site_nav('/')
   || '<main id=main-content class=container tabindex=-1><h1>Timeline</h1>'
-  || '<p>Music, reading, parkrun, chess and the daily shape of sleep, heart rate and steps. '
-  || 'Drag the lanes to move through time; zoom with the links, the buttons, or ctrl + scroll.</p>'
+  || '<p>' || home_intro() || ' Drag the lanes to move through time; zoom with the links, the buttons, or ctrl + scroll.</p>'
   || '<nav aria-label="Zoom" data-zoom-nav><ul>'
   || (SELECT string_agg('<li><a data-zoom=' || z.secs || ' href="/?span=' || z.secs || '&amp;at='
         || (vstart + span // 2 - z.secs // 2) || '">' || z.label || '</a></li>', '' ORDER BY z.ord) FROM zooms z)
@@ -187,32 +159,22 @@ CREATE OR REPLACE MACRO timeline_page(vstart, span) AS (
   || lanes_svg(vstart - span, vstart + 2 * span, span, vstart, 1200)
   || lane_labels() || '</div>'
   || '<p data-range aria-live=polite></p></section>'
-  || '<p><small>Sources: Last.fm scrobbles, the reading list, parkrun results, chess games and daily Garmin '
-  || 'aggregates (sleep, heart-rate and step rollups; no location data).</small></p>'
+  || '<p><small>' || home_sources() || '</small></p>'
   || '</main><script src="/_duckweb/timeline.js" defer></script></body></html>');
 
 CREATE OR REPLACE MACRO sql_row_cap() AS 500;
 
--- query() is bound before duckweb_match prunes a branch, so on every other
--- route it still parses its argument; an empty one is an error, hence the stand-in.
 CREATE OR REPLACE MACRO sql_page(q) AS (
   doc_open('timeline SQL') || site_nav('/sql')
   || '<main id=main-content class=container tabindex=-1><h1>SQL</h1>'
-  || '<p>Read-only access to the public tables, as DuckDB SQL: <code>lanes</code>, <code>lane_points</code>, '
-  || '<code>lastfm.*</code>, <code>reading.*</code>, <code>parkrun.*</code>, <code>chess.*</code> and the sanitised '
-  || '<code>garmin.sleep</code> and <code>garmin.daily</code>. One SELECT per request, at most '
-  || sql_row_cap() || ' rows.</p>'
+  || '<p>' || sql_intro() || ' One SELECT per request, at most ' || sql_row_cap() || ' rows.</p>'
   || '<form method=get action=/sql><label>Query<textarea name=q rows=6 spellcheck=false>'
   || duckweb_escape(q) || '</textarea></label><button type=submit>Run</button></form>');
 
 
-CREATE OR REPLACE MACRO known(method, route) AS TABLE (
-            SELECT 1 FROM duckweb_match(route, '/') WHERE method = 'GET'
-  UNION ALL SELECT 1 FROM duckweb_match(route, '/lanes.svg') WHERE method = 'GET'
-  UNION ALL SELECT 1 FROM duckweb_match(route, '/sql') WHERE method = 'GET'
-);
-
-CREATE OR REPLACE MACRO render(method, route, headers, body) AS TABLE (
+-- The routes both instances serve. An instance's render() unions these with
+-- its own and ends with the 404 branch.
+CREATE OR REPLACE MACRO route_home(method, route) AS TABLE (
             SELECT duckweb_head(200, 'text/html; charset=utf-8', duckweb_header('Cache-Control', 'public, max-age=300'))
               FROM duckweb_match(route, '/') WHERE method = 'GET'
   UNION ALL SELECT duckweb_chunk(timeline_page(s.vstart, s.span))
@@ -227,8 +189,10 @@ CREATE OR REPLACE MACRO render(method, route, headers, body) AS TABLE (
                           ELSE num_param(route, 'at', epoch(now())::BIGINT - sp.span * 9 // 10, 0, 4102444800) END AS vstart) s
               WHERE method = 'GET'
   UNION ALL SELECT duckweb_end() FROM duckweb_match(route, '/') WHERE method = 'GET'
+);
 
-  UNION ALL SELECT duckweb_head(200, 'image/svg+xml; charset=utf-8', duckweb_header('Cache-Control', 'public, max-age=300'))
+CREATE OR REPLACE MACRO route_lanes(method, route) AS TABLE (
+            SELECT duckweb_head(200, 'image/svg+xml; charset=utf-8', duckweb_header('Cache-Control', 'public, max-age=300'))
               FROM duckweb_match(route, '/lanes.svg') WHERE method = 'GET'
   UNION ALL SELECT duckweb_chunk(lanes_svg(
                      num_param(route, 'from', 0, 0, 4102444800),
@@ -238,8 +202,19 @@ CREATE OR REPLACE MACRO render(method, route, headers, body) AS TABLE (
                      num_param(route, 'w', 1200, 320, 4000)))
               FROM duckweb_match(route, '/lanes.svg') WHERE method = 'GET'
   UNION ALL SELECT duckweb_end() FROM duckweb_match(route, '/lanes.svg') WHERE method = 'GET'
+);
 
-  UNION ALL SELECT duckweb_head(200, 'text/html; charset=utf-8', duckweb_header('Cache-Control', 'no-store'))
+-- query() is bound before duckweb_match prunes a branch, so on every other
+-- route it still parses its argument. A q parameter belonging to another route
+-- (/chat/search?q=...) must therefore not reach it; an empty statement is an
+-- error too, hence the stand-in.
+CREATE OR REPLACE MACRO sql_text(route) AS
+  (CASE WHEN route = '/sql' OR starts_with(route, '/sql?')
+        THEN coalesce(nullif(duckweb_query(route, 'q'), ''), 'SELECT 1 WHERE false')
+        ELSE 'SELECT 1 WHERE false' END);
+
+CREATE OR REPLACE MACRO route_sql(method, route) AS TABLE (
+            SELECT duckweb_head(200, 'text/html; charset=utf-8', duckweb_header('Cache-Control', 'no-store'))
               FROM duckweb_match(route, '/sql') WHERE method = 'GET'
   UNION ALL SELECT duckweb_chunk(sql_page(duckweb_query(route, 'q')))
               FROM duckweb_match(route, '/sql') WHERE method = 'GET'
@@ -247,16 +222,17 @@ CREATE OR REPLACE MACRO render(method, route, headers, body) AS TABLE (
               FROM duckweb_match(route, '/sql') WHERE method = 'GET' AND duckweb_query(route, 'q') <> ''
   UNION ALL SELECT duckweb_chunk(duckweb_escape(to_json(t)::VARCHAR) || chr(10))
               FROM duckweb_match(route, '/sql'),
-                   (SELECT * FROM query(coalesce(nullif(duckweb_query(route, 'q'), ''), 'SELECT 1 WHERE false'))
-                    LIMIT sql_row_cap()) t
+                   (SELECT * FROM query(sql_text(route)) LIMIT sql_row_cap()) t
               WHERE method = 'GET' AND duckweb_query(route, 'q') <> ''
   UNION ALL SELECT duckweb_chunk('</pre>')
               FROM duckweb_match(route, '/sql') WHERE method = 'GET' AND duckweb_query(route, 'q') <> ''
   UNION ALL SELECT duckweb_chunk('</main></body></html>')
               FROM duckweb_match(route, '/sql') WHERE method = 'GET'
   UNION ALL SELECT duckweb_end() FROM duckweb_match(route, '/sql') WHERE method = 'GET'
+);
 
-  UNION ALL SELECT duckweb_head(404, 'text/plain; charset=utf-8', '') WHERE NOT EXISTS (SELECT 1 FROM known(method, route))
+CREATE OR REPLACE MACRO route_not_found(method, route) AS TABLE (
+            SELECT duckweb_head(404, 'text/plain; charset=utf-8', '') WHERE NOT EXISTS (SELECT 1 FROM known(method, route))
   UNION ALL SELECT duckweb_chunk('not found') WHERE NOT EXISTS (SELECT 1 FROM known(method, route))
   UNION ALL SELECT duckweb_end() WHERE NOT EXISTS (SELECT 1 FROM known(method, route))
 );
