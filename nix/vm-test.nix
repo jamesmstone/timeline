@@ -20,6 +20,7 @@ let
     run $out ${../test/private.sql}
     sqlite3 $out/chat.db < ${../test/chat.sqlite.sql}
     ${pkgs.lib.getExe site.purifier-snapshot} $out/status.duckdb $out/purifier.sqlite
+    cp ${../test/family.json} $out/family.json
   '';
 
   # January 2026 whole, where 601 plays force density bars, and the 4th to the
@@ -40,6 +41,17 @@ pkgs.testers.runNixOSTest {
 
       virtualisation.graphics = false;
       virtualisation.memorySize = 2048;
+      # Stands in for the edge's /data: range requests over plain files.
+      services.caddy = {
+        enable = true;
+        virtualHosts.":8099".extraConfig = ''
+          handle_path /data/* {
+            root * /var/lib/timeline-export
+            file_server
+          }
+        '';
+      };
+
       environment.systemPackages = [
         pkgs.curl
         pkgs.sqlite
@@ -94,6 +106,7 @@ pkgs.testers.runNixOSTest {
           archive = "${fixtures}/archive.db";
         };
         purifier.snapshot = "${fixtures}/purifier.sqlite";
+        family.url = "file://${fixtures}/family.json";
         quack = {
           enable = true;
           tokenFile = pkgs.writeText "quack-token" "fixture-quack-token\n";
@@ -148,6 +161,23 @@ pkgs.testers.runNixOSTest {
         inner = body.split("<pre data-result>", 1)[1].split("</pre>", 1)[0]
         return [json.loads(l.replace("&quot;", '"')) for l in inner.splitlines() if l]
 
+    import shlex
+
+    def client(q, header="'X-Duckweb-Client: 1' || chr(13) || chr(10)"):
+        # What the page's worker does, natively: attach the exports over HTTP and render the route.
+        ver = machine.succeed("cat /var/lib/timeline-export/version").strip()
+        base = f"http://127.0.0.1:8099/data/v/{ver}"
+        stmts = ["LOAD '${site.httpfs}/httpfs.duckdb_extension'", "LOAD '${duckweb.duckweb.extensionFile}'"]
+        stmts += [f"ATTACH '{base}/{n}.duckdb' AS {n} (READ_ONLY)" for n in ["lastfm", "reading", "parkrun", "chess", "garmin"]]
+        stmts += [f"ATTACH '{base}/app.duckdb' AS app (READ_ONLY)", "SET search_path='memory.main,app.main'"]
+        sel = "SELECT string_agg(chunk, substr('x', 1, 0)) FROM render('GET', '/sql?q=" + enc(q) + "', " + header + ", substr('x', 1, 0)) AS r(chunk)"
+        return "duckdb -unsigned -bail -noheader -list " + " ".join("-cmd " + shlex.quote(x) for x in stmts) + " -c " + shlex.quote(sel)
+
+    def crows(q):
+        body = machine.succeed(client(q))
+        inner = body.split("<pre data-result>", 1)[1].split("</pre>", 1)[0]
+        return [json.loads(l.replace("&quot;", '"')) for l in inner.splitlines() if l.startswith("{")]
+
     start_all()
     machine.wait_for_unit("duckweb-timeline.service")
     machine.wait_for_open_port(8791)
@@ -155,6 +185,25 @@ pkgs.testers.runNixOSTest {
     machine.wait_for_open_port(8792)
     lean.wait_for_unit("duckweb-timeline.service")
     lean.wait_for_open_port(8791)
+
+    with subtest("the export is one versioned directory of per-source DuckDB files, with nothing private"):
+        machine.succeed("systemctl start timeline-garmin-public.service")
+        machine.succeed("systemctl start timeline-export.service")
+        out = "/var/lib/timeline-export"
+        ver = machine.succeed(f"cat {out}/version").strip()
+        files = sorted(machine.succeed(f"ls {out}/v/{ver}").split())
+        assert files == sorted(f"{n}.duckdb{x}" for n in ["app", "chess", "garmin", "lastfm", "parkrun", "reading"] for x in ["", ".wal"]), files
+        assert machine.succeed(f"duckdb -noheader -list {out}/v/{ver}/lastfm.duckdb 'select count(*) from listens'").strip() == "601"
+        assert machine.succeed(f"duckdb -noheader -list {out}/v/{ver}/garmin.duckdb 'select count(*) from sleep'").strip() == "1"
+        machine.fail(f"grep -qa GPS-CANARY {out}/v/{ver}/garmin.duckdb")
+        machine.fail(f"ls {out}/v/{ver} | grep -E 'tmp|chat|archive|purifier|monitoring'")
+        # Over HTTP with range requests, as the page's worker reads it.
+        machine.wait_for_open_port(8099)
+        assert machine.succeed(f"curl -sS -r 0-15 http://127.0.0.1:8099/data/v/{ver}/lastfm.duckdb | wc -c").strip() == "16"
+        assert machine.succeed("curl -sS http://127.0.0.1:8099/data/version").strip() == ver
+        # A second run with nothing changed is the same version; a changed source is a new one.
+        machine.succeed("systemctl start timeline-export.service")
+        assert machine.succeed(f"cat {out}/version").strip() == ver
 
     with subtest("the page arrives complete, with the drawing already in it"):
         page = get(machine, "/?span=345600&at=1767960000")
@@ -188,12 +237,6 @@ pkgs.testers.runNixOSTest {
         assert "Filler" not in svg
         assert svg.count("data-lane=music") < 400
 
-    with subtest("the public instance has no private source to read"):
-        names = sorted(r["database_name"] for r in rows(machine, "select distinct database_name from duckdb_databases()"))
-        assert names == ["chess", "garmin", "lastfm", "memory", "parkrun", "reading", "system", "temp"], names
-        tables = sorted(r["table_name"] for r in rows(machine, "select table_name from duckdb_tables() where database_name = 'garmin'"))
-        assert tables == ["daily", "sleep"], tables
-
     with subtest("the published Garmin file holds aggregates and nothing with a location"):
         machine.succeed("systemctl start timeline-garmin-public.service")
         out = "/var/lib/timeline/garmin-public.sqlite"
@@ -202,66 +245,32 @@ pkgs.testers.runNixOSTest {
         machine.fail(f"grep -qa GPS-CANARY {out}")
         assert "GPS-CANARY" not in get(machine, "/lanes.svg?${month}&w=1000")
 
-    with subtest("the exports are per-source DuckDB files and carry nothing private"):
-        machine.succeed("systemctl start timeline-garmin-public.service")
-        machine.succeed("systemctl start timeline-export.service")
-        out = "/var/lib/timeline-export"
-        assert sorted(machine.succeed(f"ls {out}").split()) == ["chess.duckdb", "garmin.duckdb", "lastfm.duckdb", "parkrun.duckdb", "reading.duckdb"]
-        assert machine.succeed(f"duckdb -noheader -list {out}/lastfm.duckdb 'select count(*) from listens'").strip() == "601"
-        assert machine.succeed(f"duckdb -noheader -list {out}/garmin.duckdb 'select count(*) from sleep'").strip() == "1"
-        machine.fail(f"grep -qa GPS-CANARY {out}/garmin.duckdb")
-        machine.fail(f"ls {out} | grep -E 'wal|tmp|chat|archive|purifier|monitoring'")
-        # World-readable, so a web server user can serve them.
-        machine.succeed(f"sudo -u nobody cat {out}/lastfm.duckdb > /dev/null || su -s /bin/sh nobody -c 'cat {out}/lastfm.duckdb > /dev/null'")
-
-    with subtest("the SQL box answers a SELECT and is capped"):
-        assert rows(machine, "select count(*) n from lastfm.listens") == [{"n": 601}]
-        assert len(rows(machine, "select * from range(100000)")) == 500
-
-    with subtest("the home page carries no sources line"):
-        for port in [8791, 8792]:
-            assert "Sources:" not in get(machine, "/", port=port)
-
-    with subtest("every example query runs, and a chart arrives as an image"):
-        for port, groups in [(8791, 5), (8792, 6)]:
-            page = get(machine, "/sql", port=port)
-            assert "data-examples" in page and "svg_chart" in page, page[:500]
-            examples = rows(machine, "select gn, title, sql from examples order by gn, ord", port)
-            assert {e["gn"] for e in examples} == set(range(1, groups + 1)), (port, examples)
-            for e in examples:
-                path = "/sql?q=" + urllib.parse.quote(html.unescape(e["sql"]), safe="")
-                body = get(machine, path, port=port)
-                assert status(machine, path, port=port) == "200", (port, e["title"], body[:600])
-                assert "<svg" not in body.split("<pre data-result>", 1)[1].split("</pre>", 1)[0], (e["title"], body[:600])
-                if "svg_chart" in e["sql"]:
-                    assert 'src="data:image/svg+xml;base64,' in body, (e["title"], body[:600])
-        assert "Chat and air" not in get(machine, "/sql") and "Chat and air" in get(machine, "/sql", port=8792)
-
-    with subtest("a chart in a result cannot script the page"):
-        evil = "select '<svg xmlns=\"http://www.w3.org/2000/svg\"><title>t\"><script>alert(1)</script></title></svg>' as c"
-        body = sql(machine, evil)
-        assert "<script" not in body and "alert(1)" not in body.split("<pre data-result>", 1)[1].split("</pre>", 1)[0], body[:800]
-
-    with subtest("the SQL box cannot write, read files, attach or reconfigure"):
-        for q in [
-            "create table lanes2 as select 1",
-            "insert into lastfm.listens values (1, 1, 'x', 'x', null)",
-            "select 1; select 2",
-            "copy (select 1) to '/tmp/pwned.csv'",
-            "select * from read_text('/etc/passwd')",
-            "select * from read_csv('/etc/passwd')",
-            "attach '/var/lib/timeline/garmin-public.sqlite' as x (type sqlite)",
-            "select * from sqlite_scan('${fixtures}/garmin/james_garmin_activities.db', 'activity_records')",
-            "set enable_external_access = true",
-            "set memory_limit = '64GB'",
-            "install httpfs",
-        ]:
-            code = status(machine, "/sql?q=" + enc(q))
+    with subtest("the public /sql is a shell: the server runs none of the visitor's SQL"):
+        for q in ["select 'SERVER-RAN-IT' as x", "select * from read_text('/etc/passwd')", "copy (select 1) to '/tmp/pwned.csv'"]:
+            assert status(machine, "/sql?q=" + enc(q)) == "200", q
             body = sql(machine, q)
-            assert code == "500", (q, code, body)
-            assert "root:" not in body and "GPS-CANARY" not in body, (q, body)
+            assert "<pre data-result>" not in body and "root:" not in body, (q, body)
         machine.fail("test -e /tmp/pwned.csv")
-        machine.succeed("systemctl is-active duckweb-timeline.service")
+        page = get(machine, "/sql")
+        for want in ["id=duckweb-root", "window.__duckweb=", '"hydrate":true', "/_duckweb/client.js", "/data/v/%VERSION%/app.duckdb"]:
+            assert want in page, want
+        # The client header changes nothing on the server: it only ever answers documents.
+        assert "<!doctype html>" in machine.succeed("curl -sS -H 'X-Duckweb-Client: 1' http://127.0.0.1:8791/sql")
+        for asset in ["client.js", "duckweb.duckdb_extension.wasm", "duckdb-base.wasm"]:
+            assert status(machine, "/_duckweb/" + asset) == "200", asset
+
+    with subtest("the browser's path runs the SQL over the exported files"):
+        assert crows("select count(*) n from lastfm.listens") == [{"n": 601}]
+        assert len(crows("select * from range(100000)")) == 500
+        names = sorted(r["database_name"] for r in crows("select distinct database_name from duckdb_databases()"))
+        assert names == ["app", "chess", "garmin", "lastfm", "memory", "parkrun", "reading", "system", "temp"], names
+        assert sorted(r["table_name"] for r in crows("select table_name from duckdb_tables() where database_name = 'garmin'")) == ["daily", "sleep"]
+        fragment = machine.succeed(client("select 1 as one"))
+        assert "<title>timeline SQL</title>" in fragment and "<!doctype" not in fragment and "window.__duckweb" not in fragment
+        document = machine.succeed(client("select 1 as one", header="substr('x', 1, 0)"))
+        assert "<!doctype html>" in document and "window.__duckweb=" in document
+        for q in ["insert into lastfm.listens values (1, 1, 'x', 'x', null)", "create table app.t as select 1", "select 1; select 2"]:
+            machine.fail(client(q))
 
     with subtest("resource caps are in place on the unit"):
         show = machine.succeed("systemctl show duckweb-timeline.service -p MemoryMax -p CPUQuotaPerSecUSec")
@@ -281,7 +290,7 @@ pkgs.testers.runNixOSTest {
     with subtest("the private instance sees the private sources and the public one does not"):
         private_names = sorted(r["database_name"] for r in rows(machine, "select distinct database_name from duckdb_databases()", 8792))
         assert private_names == [
-            "archive", "chat", "chess", "garmin", "garmin_activities", "garmin_full", "garmin_monitoring",
+            "archive", "chat", "chess", "family", "garmin", "garmin_activities", "garmin_full", "garmin_monitoring",
             "garmin_summary", "lastfm", "memory", "parkrun", "purifier", "reading", "system", "temp",
         ], private_names
         # Full Garmin, GPS included, answers on the private box only.
@@ -301,9 +310,8 @@ pkgs.testers.runNixOSTest {
             "select * from air_points",
             "select * from chat_daily",
         ]:
-            assert status(machine, "/sql?q=" + enc(q)) == "500", q
-            body = sql(machine, q)
-            assert "GPS-CANARY" not in body and "CHAT-BODY-CANARY" not in body and "ARCHIVE-CANARY" not in body, (q, body)
+            # The browser's catalogs are the exports; none of these exist there.
+            machine.fail(client(q))
 
     with subtest("the public instance has no chat or air routes, the private one does"):
         for path in ["/chat", "/chat/search?q=needle"]:
@@ -377,14 +385,17 @@ pkgs.testers.runNixOSTest {
         import xml.etree.ElementTree as ET
         root = ET.fromstring(svg)
         assert root.tag == "{http://www.w3.org/2000/svg}svg" and root.get("width") == "1000", svg[:300]
-        for lane in ["hr", "stress", "sleep", "steps", "music", "read"]:
+        for lane in ["hr", "stress", "sleep", "steps", "music", "family", "read"]:
             assert f'data-lane="{lane}"' in svg, lane
-        assert "77 bpm" in svg and "stress 41" in svg
+        assert "77 bpm" in svg and "stress 41" in svg and "Ada Lovelace" in svg
         assert 'data-lane="chat"' not in svg and 'data-lane="air"' not in svg
         assert "GPS-CANARY" not in svg and "CHAT-BODY-CANARY" not in svg
         headers = machine.succeed("curl -sS -D - -o /dev/null 'http://127.0.0.1:8792/embed.svg?end=now&duration=1w'")
         assert "image/svg+xml" in headers and "access-control-allow-origin: *" in headers.lower(), headers
-        for bad in ["start=x", "duration=1y", "duration=10m", "start=2026-01-02T00:00:00Z&end=2026-01-01T00:00:00Z", "width=abc"]:
+        assert "height=520" in svg and "No Birth" not in svg
+        tall = get(machine, "/embed.svg?start=2026-01-04T00:00:00Z&end=2026-01-19T00:00:00Z&width=1000&height=700", port=8792)
+        assert "height=700" in tall and 'viewBox="0.00 0 1000 700"' in tall, tall[:400]
+        for bad in ["start=x", "duration=1y", "duration=10m", "start=2026-01-02T00:00:00Z&end=2026-01-01T00:00:00Z", "width=abc", "height=abc"]:
             assert status(machine, "/embed.svg?" + bad, port=8792) == "400", bad
 
     with subtest("the pages do not draw the raw lanes, and the public instance has no embed"):

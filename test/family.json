@@ -1,0 +1,5 @@
+{"data":{"allIndividual":{"nodes":[
+ {"id":"1","name":{"fullName":"Ada Lovelace"},"birth":{"date":"2026-01-05","born":true,"place":{"place":"London"}},"death":{"date":"2026-01-12","died":true,"place":{"place":"London"}}},
+ {"id":"2","name":{"fullName":"Alive Person"},"birth":{"date":"2026-01-08","born":true,"place":{"place":"X"}},"death":null},
+ {"id":"3","name":{"fullName":"No Birth"},"birth":null,"death":null}
+]}}}
