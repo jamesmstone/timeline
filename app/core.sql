@@ -25,7 +25,7 @@ CREATE OR REPLACE TABLE tick_units AS SELECT * FROM (VALUES
 CREATE OR REPLACE MACRO lane_h()   AS 56;
 CREATE OR REPLACE MACRO lane_pad() AS 6;
 CREATE OR REPLACE MACRO axis_h()   AS 28;
-CREATE OR REPLACE MACRO lanes_h()  AS axis_h() + (SELECT count(*) FROM lanes) * lane_h();
+CREATE OR REPLACE MACRO lanes_h(ids) AS axis_h() + (SELECT count(*) FROM lanes WHERE list_contains(ids, id)) * lane_h();
 -- Past this many events in a window a lane is drawn as density bars instead of
 -- one rectangle per event.
 CREATE OR REPLACE MACRO item_max() AS 400;
@@ -41,19 +41,20 @@ CREATE OR REPLACE MACRO tick_label(ts, fmt) AS
 CREATE OR REPLACE MACRO num_param(route, key, dflt, lo, hi) AS
   (least(hi, greatest(lo, coalesce(TRY_CAST(nullif(duckweb_query(route, key), '') AS BIGINT), dflt))));
 
--- The whole drawing for [f, t) at a given visible span. The svg is wider than
--- the viewport so the browser can pan inside it without asking for more.
-CREATE OR REPLACE MACRO lanes_svg(f, t, span, vstart, w) AS (
+-- Drawn for [f, t), wider than the viewport so the browser can pan without asking for more.
+CREATE OR REPLACE MACRO lanes_svg_of(f, t, span, vstart, w, ids) AS (
   WITH
+  sel AS (SELECT l.id, l.label, l.kind, row_number() OVER (ORDER BY list_position(ids, l.id)) AS ord
+          FROM lanes l WHERE list_contains(ids, l.id)),
   p AS (SELECT f::BIGINT AS f, t::BIGINT AS t, span::BIGINT AS span,
                w / span::DOUBLE AS u,
                greatest(1, ceil(span / (w / bar_units())))::BIGINT AS bw),
   pts AS (SELECT lp.lane, lp.t0, lp.value FROM lane_points lp, p
-          WHERE lp.t0 >= p.f - 86400 AND lp.t0 < p.t),
+          WHERE list_contains(ids, lp.lane) AND lp.t0 >= p.f - 86400 AND lp.t0 < p.t),
   modes AS (SELECT lane, count(*) AS n, count(*) <= item_max() AS as_items FROM pts GROUP BY lane),
   items AS (SELECT i.lane, i.t0, i.t1, i.value, i.label
             FROM lane_items i, p, modes m
-            WHERE i.lane = m.lane AND m.as_items AND i.t0 >= p.f - 86400 AND i.t0 < p.t),
+            WHERE list_contains(ids, i.lane) AND i.lane = m.lane AND m.as_items AND i.t0 >= p.f - 86400 AND i.t0 < p.t),
   bars AS (SELECT pt.lane, (pt.t0 - p.f) // p.bw AS b, count(*) AS c, avg(pt.value) AS v
            FROM pts pt, p, modes m
            WHERE pt.lane = m.lane AND NOT m.as_items AND pt.t0 >= p.f GROUP BY ALL),
@@ -67,7 +68,7 @@ CREATE OR REPLACE MACRO lanes_svg(f, t, span, vstart, w) AS (
       || ' height=' || printf('%.2f', h.h) || '><title>'
       || duckweb_escape(strftime(epoch_ms(i.t0 * 1000), '%-d %b %Y %H:%M') || ' · ' || i.label)
       || '</title></rect>' AS el
-    FROM items i JOIN lanes l ON l.id = i.lane
+    FROM items i JOIN sel l ON l.id = i.lane
     JOIN p ON true
     LEFT JOIN lane_scale sc ON sc.lane = l.id,
     LATERAL (SELECT CASE WHEN l.kind = 'level'
@@ -83,7 +84,7 @@ CREATE OR REPLACE MACRO lanes_svg(f, t, span, vstart, w) AS (
       || duckweb_escape(strftime(epoch_ms((p.f + b.b * p.bw) * 1000), '%-d %b %Y'))
       || CASE WHEN l.kind = 'level' THEN printf(' · avg %.1f', b.v) ELSE format(' · {:,}', b.c) END
       || '</title></rect>'
-    FROM bars b JOIN lanes l ON l.id = b.lane
+    FROM bars b JOIN sel l ON l.id = b.lane
     JOIN p ON true
     JOIN barmax bm ON bm.lane = b.lane
     LEFT JOIN lane_scale sc ON sc.lane = l.id,
@@ -105,20 +106,24 @@ CREATE OR REPLACE MACRO lanes_svg(f, t, span, vstart, w) AS (
     WHERE un.kind = 'm' AND epoch(m) >= p.f),
   grid AS (
     SELECT '<line x1=' || printf('%.2f', (tk.ts - p.f) * p.u) || ' x2=' || printf('%.2f', (tk.ts - p.f) * p.u)
-           || ' y1=' || axis_h() - 6 || ' y2=' || lanes_h() || '></line>'
+           || ' y1=' || axis_h() - 6 || ' y2=' || lanes_h(ids) || '></line>'
            || '<text x=' || printf('%.2f', (tk.ts - p.f) * p.u + 4) || ' y=' || axis_h() - 10 || '>'
            || tick_label(epoch_ms(tk.ts * 1000), tk.fmt) || '</text>' AS el
     FROM ticks tk, p)
   SELECT '<svg xmlns="http://www.w3.org/2000/svg" role=img aria-label="Timeline lanes" data-timeline-svg'
     || ' data-from=' || p.f || ' data-to=' || p.t || ' data-span=' || p.span
-    || ' viewBox="' || printf('%.2f', (vstart - p.f) * p.u) || ' 0 ' || w || ' ' || lanes_h() || '"'
+    || ' viewBox="' || printf('%.2f', (vstart - p.f) * p.u) || ' 0 ' || w || ' ' || lanes_h(ids) || '"'
     || ' preserveAspectRatio="xMinYMin slice">'
     || '<g class=bands>'
     || (SELECT string_agg('<rect class=band x=0 width=' || printf('%.2f', (p.t - p.f) * p.u) || ' y=' || ((l.ord - 1) * lane_h() + axis_h())
-          || ' height=' || lane_h() || ' data-odd=' || (l.ord % 2) || '></rect>', '' ORDER BY l.ord) FROM lanes l)
+          || ' height=' || lane_h() || ' data-odd=' || (l.ord % 2) || '></rect>', '' ORDER BY l.ord) FROM sel l)
     || '</g><g class=grid>' || coalesce((SELECT string_agg(el, '') FROM grid), '') || '</g>'
     || '<g class=marks>' || coalesce((SELECT string_agg(el, '' ORDER BY ord) FROM drawn), '') || '</g></svg>'
   FROM p);
+
+-- Lanes the pages show.
+CREATE OR REPLACE MACRO lanes_svg(f, t, span, vstart, w) AS
+  (lanes_svg_of(f, t, span, vstart, w, default_lanes()));
 
 CREATE OR REPLACE MACRO doc_open(title) AS (
   '<!doctype html><html lang=en><head><meta charset=utf-8>'
@@ -138,9 +143,9 @@ CREATE OR REPLACE TABLE zooms AS SELECT * FROM (VALUES
 
 CREATE OR REPLACE MACRO lane_labels() AS (
   SELECT string_agg('<span data-lane-label="' || l.id || '" style="top:'
-           || printf('%.3f', 100.0 * (axis_h() + (l.ord - 1) * lane_h() + lane_pad()) / lanes_h())
+           || printf('%.3f', 100.0 * (axis_h() + (l.ord - 1) * lane_h() + lane_pad()) / lanes_h(default_lanes()))
            || '%">' || duckweb_escape(l.label) || '</span>', '' ORDER BY l.ord)
-  FROM lanes l);
+  FROM (SELECT *, row_number() OVER (ORDER BY ord) AS pos FROM lanes WHERE list_contains(default_lanes(), id)) l);
 
 CREATE OR REPLACE MACRO timeline_page(vstart, span) AS (
   doc_open('timeline') || site_nav('/')

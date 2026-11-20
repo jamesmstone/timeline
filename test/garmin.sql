@@ -24,3 +24,7 @@ INSERT INTO a.activity_records VALUES ('2026-01-10 08:00:00', -37.81, 144.96, 'G
 ATTACH getvariable('out') || '/james_garmin_monitoring.db' AS m (TYPE sqlite);
 CREATE TABLE m.monitoring_hr("timestamp" VARCHAR, heart_rate INTEGER);
 INSERT INTO m.monitoring_hr VALUES ('2026-01-10 08:00:00', 77);
+
+-- Per-sample stress, in the full snapshot only; the embed reads it from the private instance.
+CREATE TABLE g.stress("timestamp" VARCHAR, stress INTEGER);
+INSERT INTO g.stress VALUES ('2026-01-10 08:00:00', 41), ('2026-01-10 08:03:00', -1);

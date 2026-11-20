@@ -1,47 +1,24 @@
 # timeline
 
+Duckweb pages over the scraped SQLite databases, as two instances on hermanii.
+
 ## Embedding
 
-`/embed.svg` draws the timeline as a self-contained SVG image, for other sites
-to embed:
+`/embed.svg` on the private instance is the lane timeline as a self-contained
+image, for other sites to embed with `<img>`: heart rate and stress samples,
+sleep, steps, music and reading.
 
-```html
-<picture>
-  <source
-    media="(max-width: 600px)"
-    srcset="
-      https://timeline.jamesst.one/embed.svg?maxWidth=600px&end=now&duration=1w
-    "
-  />
-  <img
-    src="https://timeline.jamesst.one/embed.svg?end=now&duration=1w"
-    alt="Timeline"
-    style="width: 100%; height: auto;"
-  />
-</picture>
-```
+| Parameter  | Meaning                                                                  |
+| ---------- | ------------------------------------------------------------------------ |
+| `start`    | ISO 8601 time, or `now`.                                                 |
+| `end`      | ISO 8601 time, or `now`.                                                 |
+| `duration` | `24h`, `30d`, `1w`. Used when only one of `start` and `end` is given.    |
+| `width`    | Pixels, 200 to 2400. Defaults to 1200.                                   |
+| `maxWidth` | Caps `width`; `600px` and `600` both work.                               |
 
-| Parameter  | Meaning                                                                                              |
-| ---------- | ---------------------------------------------------------------------------------------------------- |
-| `start`    | ISO 8601 time, or `now`.                                                                             |
-| `end`      | ISO 8601 time, or `now`.                                                                             |
-| `duration` | `24h`, `30d`, `1w`, ... Used when only one of `start` and `end` is given, or neither.                |
-| `width`    | Canvas width in pixels, 200 to 2400. Defaults to 1200.                                               |
-| `maxWidth` | Caps `width`, or sets it when `width` is absent; `600px` and `600` both work.                        |
-| `height`   | Canvas height in pixels, 200 to 2400. Defaults to suit the layout.                                   |
-| `layout`   | `horizontal`, `vertical` or `auto` (the default): vertical when taller than wide, or under 640 wide. |
-
-`start` and `end` together win; otherwise one of them plus `duration`
-(default a week); with neither, the week ending now. Times are UTC, and a
-range must run between an hour and five years.
-
-| `?end=now&duration=1w`                         | `?maxWidth=600px&end=now&duration=1w`      |
-| ---------------------------------------------- | ------------------------------------------ |
-| ![Horizontal embed](docs/embed-horizontal.svg) | ![Vertical embed](docs/embed-vertical.svg) |
-
-The page itself is static (`packages.default`); the image needs a server,
-`packages.embed`, which `nixosModules.default` runs as
-`services.timeline-embed`. See `flake.nix` for the web server wiring.
+`start` and `end` together win; with one, `duration` (default a week) fills in
+the other; with neither, the week ending now. A range runs from an hour to five
+years. Always the horizontal layout.
 
 ## Public instance
 
@@ -96,3 +73,19 @@ location, the SQL box refuses writes, file access, `ATTACH` and reconfiguration,
 the private instance sees the private catalogs and the public one still does
 not, and no body, archive row or coordinate reaches a lane or the chat page.
 `bun test web` covers the pan arithmetic.
+
+## Quack
+
+`services.timeline-private.quack` serves DuckDB's Quack protocol from the
+private instance's own DuckDB, on the tailnet address, with a token read from
+`tokenFile` as a systemd credential. Quack has no read-only token: whoever holds
+it can run SQL over every attached catalog, raw Garmin and chat bodies included.
+The process is what keeps it read-only (sources attached `READ_ONLY`, file
+access off), and the public instance has no Quack listener.
+
+## Exports
+
+`services.timeline-export` copies each public source's SQLite file into
+`<outDirectory>/<source>.duckdb` for a web server to serve as static files. It
+refuses raw Garmin, chat, archive and purifier sources; Garmin goes out as the
+sanitised rollups only.

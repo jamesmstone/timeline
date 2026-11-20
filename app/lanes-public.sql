@@ -28,3 +28,6 @@ CREATE OR REPLACE VIEW lane_scale AS
   SELECT 'steps', 0.0, coalesce(quantile_cont(value, 0.99), 10000.0)
     FROM lane_points WHERE lane = 'steps';
 
+
+-- The lanes the pages draw: all of them.
+CREATE OR REPLACE MACRO default_lanes() AS (SELECT list(id ORDER BY ord) FROM lanes);
