@@ -11,6 +11,10 @@ CREATE OR REPLACE MACRO site_nav(here) AS (
   || '<li><a href="/sql"' || CASE WHEN here = '/sql' THEN ' aria-current=page' ELSE '' END || '>SQL</a></li>'
   || '</ul></nav></header>');
 
+-- The SQL box runs on the server here; nothing hydrates.
+CREATE OR REPLACE MACRO hydrates() AS (false);
+CREATE OR REPLACE MACRO client_config() AS ('');
+
 CREATE OR REPLACE MACRO home_intro() AS
   'Music, reading, parkrun, chess, sleep, heart rate and steps, with message volume and air quality.';
 

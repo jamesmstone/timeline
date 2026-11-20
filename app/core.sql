@@ -169,8 +169,23 @@ CREATE OR REPLACE MACRO timeline_page(vstart, span) AS (
 
 CREATE OR REPLACE MACRO sql_row_cap() AS 500;
 
-CREATE OR REPLACE MACRO sql_page(q) AS (
-  doc_open('timeline SQL') || site_nav('/sql')
+-- The public instance's /sql is a shell the browser fills in: the server never runs the
+-- visitor's SQL (is_server()), the page's worker does, over the exported files.
+CREATE OR REPLACE MACRO is_server() AS (false);
+CREATE OR REPLACE MACRO is_doc(headers) AS (is_server() OR duckweb_header_value(headers, 'X-Duckweb-Client') = '');
+CREATE OR REPLACE MACRO sql_exec() AS (NOT hydrates() OR NOT is_server());
+
+CREATE OR REPLACE MACRO sql_open(headers, title) AS (
+  CASE WHEN hydrates() AND NOT is_doc(headers) THEN '<title>' || duckweb_escape(title) || '</title>'
+       ELSE doc_open(title) || CASE WHEN hydrates() THEN '<div id=duckweb-root>' ELSE '' END END);
+CREATE OR REPLACE MACRO sql_close(headers) AS (
+  '</main>' || CASE WHEN NOT hydrates() THEN '</body></html>'
+    WHEN is_doc(headers) THEN '</div><script>window.__duckweb=' || client_config() || ';</script>'
+      || '<script type=module src="/_duckweb/client.js"></script></body></html>'
+    ELSE '' END);
+
+CREATE OR REPLACE MACRO sql_page(headers, q) AS (
+  sql_open(headers, 'timeline SQL') || site_nav('/sql')
   || '<main id=main-content class=container tabindex=-1><h1>SQL</h1>'
   || '<p>' || sql_intro() || ' One SELECT per request, at most ' || sql_row_cap() || ' rows.</p>'
   || '<form method=get action=/sql><label>Query<textarea name=q rows=6 spellcheck=false>'
@@ -215,23 +230,23 @@ CREATE OR REPLACE MACRO route_lanes(method, route) AS TABLE (
 -- error too, hence the stand-in.
 CREATE OR REPLACE MACRO sql_text(route) AS
   (CASE WHEN route = '/sql' OR starts_with(route, '/sql?')
-        THEN coalesce(nullif(duckweb_query(route, 'q'), ''), 'SELECT 1 WHERE false')
+        THEN coalesce(nullif(CASE WHEN sql_exec() THEN duckweb_query(route, 'q') END, ''), 'SELECT 1 WHERE false')
         ELSE 'SELECT 1 WHERE false' END);
 
-CREATE OR REPLACE MACRO route_sql(method, route) AS TABLE (
+CREATE OR REPLACE MACRO route_sql(method, route, headers) AS TABLE (
             SELECT duckweb_head(200, 'text/html; charset=utf-8', duckweb_header('Cache-Control', 'no-store'))
               FROM duckweb_match(route, '/sql') WHERE method = 'GET'
-  UNION ALL SELECT duckweb_chunk(sql_page(duckweb_query(route, 'q')))
+  UNION ALL SELECT duckweb_chunk(sql_page(headers, duckweb_query(route, 'q')))
               FROM duckweb_match(route, '/sql') WHERE method = 'GET'
   UNION ALL SELECT duckweb_chunk('<pre data-result>')
-              FROM duckweb_match(route, '/sql') WHERE method = 'GET' AND duckweb_query(route, 'q') <> ''
+              FROM duckweb_match(route, '/sql') WHERE method = 'GET' AND duckweb_query(route, 'q') <> '' AND sql_exec()
   UNION ALL SELECT duckweb_chunk(duckweb_escape(to_json(t)::VARCHAR) || chr(10))
               FROM duckweb_match(route, '/sql'),
                    (SELECT * FROM query(sql_text(route)) LIMIT sql_row_cap()) t
-              WHERE method = 'GET' AND duckweb_query(route, 'q') <> ''
+              WHERE method = 'GET' AND duckweb_query(route, 'q') <> '' AND sql_exec()
   UNION ALL SELECT duckweb_chunk('</pre>')
-              FROM duckweb_match(route, '/sql') WHERE method = 'GET' AND duckweb_query(route, 'q') <> ''
-  UNION ALL SELECT duckweb_chunk('</main></body></html>')
+              FROM duckweb_match(route, '/sql') WHERE method = 'GET' AND duckweb_query(route, 'q') <> '' AND sql_exec()
+  UNION ALL SELECT duckweb_chunk(sql_close(headers))
               FROM duckweb_match(route, '/sql') WHERE method = 'GET'
   UNION ALL SELECT duckweb_end() FROM duckweb_match(route, '/sql') WHERE method = 'GET'
 );
