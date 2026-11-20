@@ -51,11 +51,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1794655292,
-        "narHash": "sha256-w2zSU64qiWz6KB07W18Iy3/ZhGnBquVXZDim9rpF/L0=",
+        "lastModified": 1795080055,
+        "narHash": "sha256-TmtoUD1joZKRRSjuy8wRwAG7hZqnhqqBpldZYwh5hZg=",
         "ref": "refs/heads/main",
-        "rev": "68919e09662354a84f45deb44d8e50f964a70d64",
-        "revCount": 75,
+        "rev": "2486c762567d07f8e9016dc4e245a17ed9f57d45",
+        "revCount": 105,
         "type": "git",
         "url": "ssh://forgejo@hermanii/james/duckweb"
       },
