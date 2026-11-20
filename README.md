@@ -56,7 +56,7 @@ Synapse's database), optionally the chat `archive`, and `purifier`. It runs as
 its own unit with its own state, looser caps, and the supplementary groups its
 files need.
 
-Two more lanes, chat volume and PM2.5, join the public ones. `/chat` shows
+Four more lanes join the public ones: chat volume, PM2.5, family and, drawn only by `/embed.svg`, raw heart rate and stress. `/chat` shows
 message counts by network and never a body; bodies are reachable through
 `/chat/search?q=` (a plain substring of at least three characters, the newest
 50 matches) and the SQL box (`chat_messages`). The public instance has neither

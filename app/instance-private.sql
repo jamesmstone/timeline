@@ -11,7 +11,6 @@ CREATE OR REPLACE MACRO site_nav(here) AS (
   || '<li><a href="/sql"' || CASE WHEN here = '/sql' THEN ' aria-current=page' ELSE '' END || '>SQL</a></li>'
   || '</ul></nav></header>');
 
--- The SQL box runs on the server here; nothing hydrates.
 CREATE OR REPLACE MACRO hydrates() AS (false);
 CREATE OR REPLACE MACRO client_config() AS ('');
 
@@ -23,7 +22,7 @@ CREATE OR REPLACE MACRO sql_intro() AS
   || '<code>parkrun.*</code>, <code>chess.*</code>), the Garmin rollups <code>garmin.*</code> and the full snapshots '
   || '<code>garmin_full.*</code>, <code>garmin_summary.*</code>, <code>garmin_activities.*</code> and '
   || '<code>garmin_monitoring.*</code>, the chat snapshot <code>chat.*</code> with <code>chat_messages</code> (bodies) and <code>archive.*</code>, '
-  || 'and the purifier snapshot <code>purifier.*</code>.';
+  || 'the purifier snapshot <code>purifier.*</code> and the family tree <code>family.individuals</code>.';
 
 CREATE OR REPLACE MACRO known(method, route) AS TABLE (
             SELECT 1 FROM duckweb_match(route, '/') WHERE method = 'GET'

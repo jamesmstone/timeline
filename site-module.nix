@@ -150,7 +150,6 @@ in
         ".read ${site.app}/client-config.sql"
         ".read ${site.app}/core.sql"
         ".read ${site.app}/routes-public.sql"
-        # The server only draws the /sql shell; the visitor's SQL runs in their browser.
         "CREATE OR REPLACE MACRO is_server() AS (true)"
         # Last, so everything above could still read files. duckweb_serve runs
         # after setup and sets preserve_insertion_order itself, which a locked

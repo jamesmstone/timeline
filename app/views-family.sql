@@ -1,4 +1,3 @@
--- The family lane: one span per person from birth to death, or to now while alive.
 -- Times are naive UTC epoch seconds, as in views-shared.sql.
 
 CREATE OR REPLACE VIEW family_spans AS

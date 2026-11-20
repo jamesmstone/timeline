@@ -1,7 +1,3 @@
--- Flattens the family tree's individualsAPI.json into a SQLite file the private
--- instance can attach. Variables:
---   json   the downloaded file
---   out    path of the SQLite file to write
 ATTACH getvariable('out') AS snap (TYPE sqlite);
 
 CREATE TABLE snap.individuals AS
