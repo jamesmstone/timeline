@@ -160,7 +160,6 @@ let
 
   sources = [ "lastfm" "reading" "parkrun" "chess" "garmin" ];
 
-  # The exports of the fixtures, which the page's macros are bound against.
   fixtureExports = runCommand "timeline-fixture-exports" { nativeBuildInputs = [ duckdb exportOne garminPublic ]; } ''
     mkdir -p sq garmin $out
     run() {
@@ -226,8 +225,6 @@ let
     cp app.duckdb $out
   '';
 
-  # Publishes one consistent export: every source and the macros in a directory named
-  # for their content, then `version` last, which is what new visits are pointed at.
   timelineExport = writeShellApplication {
     name = "timeline-export";
     runtimeInputs = [

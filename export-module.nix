@@ -32,7 +32,7 @@ in
         garmin = "/var/lib/timeline/garmin-public.sqlite";
       };
       description = ''
-        SQLite files to export, by name: each becomes <outDirectory>/<name>.duckdb.
+        SQLite files to export, by name: each becomes <outDirectory>/v/<hash>/<name>.duckdb.
         Only public sources belong here. `garmin` must be the sanitised rollups
         from services.timeline.garmin, never the raw snapshots.
       '';

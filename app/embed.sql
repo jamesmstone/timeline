@@ -1,9 +1,4 @@
--- /embed.svg: the lane timeline as a self-contained image other sites embed
--- with <img>. Private instance only, because it draws the raw Garmin samples.
--- It reuses lanes_svg over the six lanes the embed has always shown, with its
--- colours spelled out per theme (some rasterisers ignore custom properties).
--- Parameters: start, end (ISO 8601 or now), duration (Nh, Nd, Nw), width,
--- maxWidth, height (200 to 2400). The image is always the horizontal layout.
+-- Colours are spelled out per theme because some rasterisers ignore custom properties.
 
 CREATE OR REPLACE MACRO embed_lanes() AS ['hr', 'stress', 'sleep', 'steps', 'music', 'family', 'read'];
 
