@@ -31,4 +31,5 @@ CREATE OR REPLACE MACRO known(method, route) AS TABLE (
   UNION ALL SELECT 1 FROM duckweb_match(route, '/sql') WHERE method = 'GET'
   UNION ALL SELECT 1 FROM duckweb_match(route, '/chat') WHERE method = 'GET'
   UNION ALL SELECT 1 FROM duckweb_match(route, '/chat/search') WHERE method = 'GET'
+  UNION ALL SELECT 1 FROM duckweb_match(route, '/embed.svg') WHERE method = 'GET'
 );

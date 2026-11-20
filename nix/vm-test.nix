@@ -63,6 +63,17 @@ pkgs.testers.runNixOSTest {
         };
       };
 
+      services.timeline-export = {
+        enable = true;
+        sources = {
+          lastfm = "${fixtures}/lastfm.db";
+          reading = "${fixtures}/readingList.db";
+          parkrun = "${fixtures}/parkruns.db";
+          chess = "${fixtures}/chess.db";
+          garmin = "/var/lib/timeline/garmin-public.sqlite";
+        };
+      };
+
       # Both instances on one host, as deployed: the public one must still not
       # see what only the private one is handed.
       services.timeline-private = {
@@ -83,6 +94,10 @@ pkgs.testers.runNixOSTest {
           archive = "${fixtures}/archive.db";
         };
         purifier.snapshot = "${fixtures}/purifier.sqlite";
+        quack = {
+          enable = true;
+          tokenFile = pkgs.writeText "quack-token" "fixture-quack-token\n";
+        };
       };
     };
 
@@ -110,6 +125,7 @@ pkgs.testers.runNixOSTest {
 
   testScript = ''
     import json
+    import re
 
     def get(node, path, *flags, port=8791):
         return node.succeed(f"curl -sS {' '.join(flags)} 'http://127.0.0.1:{port}{path}'")
@@ -183,6 +199,18 @@ pkgs.testers.runNixOSTest {
         assert machine.succeed(f"sqlite3 {out} 'select count(*) from daily'").strip() == "2"
         machine.fail(f"grep -qa GPS-CANARY {out}")
         assert "GPS-CANARY" not in get(machine, "/lanes.svg?${month}&w=1000")
+
+    with subtest("the exports are per-source DuckDB files and carry nothing private"):
+        machine.succeed("systemctl start timeline-garmin-public.service")
+        machine.succeed("systemctl start timeline-export.service")
+        out = "/var/lib/timeline-export"
+        assert sorted(machine.succeed(f"ls {out}").split()) == ["chess.duckdb", "garmin.duckdb", "lastfm.duckdb", "parkrun.duckdb", "reading.duckdb"]
+        assert machine.succeed(f"duckdb -noheader -list {out}/lastfm.duckdb 'select count(*) from listens'").strip() == "601"
+        assert machine.succeed(f"duckdb -noheader -list {out}/garmin.duckdb 'select count(*) from sleep'").strip() == "1"
+        machine.fail(f"grep -qa GPS-CANARY {out}/garmin.duckdb")
+        machine.fail(f"ls {out} | grep -E 'wal|tmp|chat|archive|purifier|monitoring'")
+        # World-readable, so a web server user can serve them.
+        machine.succeed(f"sudo -u nobody cat {out}/lastfm.duckdb > /dev/null || su -s /bin/sh nobody -c 'cat {out}/lastfm.duckdb > /dev/null'")
 
     with subtest("the SQL box answers a SELECT and is capped"):
         assert rows(machine, "select count(*) n from lastfm.listens") == [{"n": 601}]
@@ -315,5 +343,47 @@ pkgs.testers.runNixOSTest {
         show = machine.succeed("systemctl show duckweb-timeline-private.service -p MemoryMax -p CPUQuotaPerSecUSec")
         assert "MemoryMax=3221225472" in show, show
         assert "CPUQuotaPerSecUSec=4s" in show, show
+
+    with subtest("/embed.svg draws the raw heart rate and stress lanes next to the others"):
+        svg = get(machine, "/embed.svg?start=2026-01-04T00:00:00Z&end=2026-01-19T00:00:00Z&width=1000", port=8792)
+        assert svg.startswith("<svg") and "<style>" in svg, svg[:300]
+        assert 'width=1000' in svg
+        for lane in ["hr", "stress", "sleep", "steps", "music", "read"]:
+            assert f"data-lane={lane}" in svg, lane
+        assert "77 bpm" in svg and "stress 41" in svg
+        assert "data-lane=chat" not in svg and "data-lane=air" not in svg
+        assert "GPS-CANARY" not in svg and "CHAT-BODY-CANARY" not in svg
+        headers = machine.succeed("curl -sS -D - -o /dev/null 'http://127.0.0.1:8792/embed.svg?end=now&duration=1w'")
+        assert "image/svg+xml" in headers and "access-control-allow-origin: *" in headers.lower(), headers
+        for bad in ["start=x", "duration=1y", "duration=10m", "start=2026-01-02T00:00:00Z&end=2026-01-01T00:00:00Z", "width=abc"]:
+            assert status(machine, "/embed.svg?" + bad, port=8792) == "400", bad
+
+    with subtest("the pages do not draw the raw lanes, and the public instance has no embed"):
+        svg = get(machine, "/lanes.svg?${fortnight}&w=1000", port=8792)
+        assert "data-lane=hr " not in svg and "data-lane=stress" not in svg, sorted(set(re.findall(r"data-lane=\w+", svg)))
+        page = get(machine, "/?span=345600&at=1767960000", port=8792)
+        assert 'data-lane-label="hr"' not in page and 'data-lane-label="stress"' not in page, page[:300]
+        assert status(machine, "/embed.svg") == "404"
+
+    with subtest("Quack answers with the token and refuses without it"):
+        def quack(q, token="fixture-quack-token"):
+            return (
+                "duckdb -unsigned -noheader -list -cmd \"LOAD '${site.httpfs}/httpfs.duckdb_extension'\" -cmd \"LOAD '${site.quack}/quack.duckdb_extension'\" -c "
+                + json.dumps(f"FROM quack_query('quack:127.0.0.1:9494', '{q}', token = '{token}', disable_ssl = true)")
+            )
+        assert machine.succeed(quack("select count(*) from lastfm.listens")).strip().splitlines()[-1] == "601"
+        assert machine.succeed(quack("select heart_rate from garmin_monitoring.monitoring_hr")).strip().splitlines()[-1] == "77"
+        machine.fail(quack("select 1", token="wrong-token"))
+        assert "fixture-quack-token" not in machine.succeed("journalctl -u duckweb-timeline-private.service --no-pager")
+
+    with subtest("a Quack client cannot write sources or read files either"):
+        for q in [
+            "insert into lastfm.listens values (1, 1, 1, 1, null)",
+            "copy (select 1) to '/tmp/pwned-quack.csv'",
+            "select * from read_text('/etc/passwd')",
+            "attach '/tmp/x.sqlite' as x (type sqlite)",
+        ]:
+            machine.fail(quack(q))
+        machine.fail("test -e /tmp/pwned-quack.csv")
   '';
 }

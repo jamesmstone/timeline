@@ -87,10 +87,10 @@ in
     sources = lib.mkOption {
       type = lib.types.attrsOf lib.types.path;
       default = {
-        lastfm = "/var/lib/datasette-sites/lastfm/music.db";
-        reading = "/var/lib/datasette-sites/api-read/readingList.db";
-        parkrun = "/var/lib/datasette-sites/parkrun/parkruns.db";
-        chess = "/var/lib/datasette-sites/chess/chess.db";
+        lastfm = "/var/lib/dbs/lastfm/music.db";
+        reading = "/var/lib/dbs/api-read/readingList.db";
+        parkrun = "/var/lib/dbs/parkrun/parkruns.db";
+        chess = "/var/lib/dbs/chess/chess.db";
       };
       description = ''
         The public sources, attached read-only by catalog name. The lane views
@@ -176,6 +176,38 @@ in
       };
     };
 
+    quack = {
+      enable = lib.mkEnableOption ''
+        Quack, DuckDB's client protocol, on this instance's own DuckDB. Whoever holds
+        the token can run SQL over every catalog this instance attaches, raw Garmin
+        and chat bodies included. Quack has no read-only token: what keeps it read-only
+        is the process, whose sources are attached READ_ONLY with file access off
+      '';
+
+      address = lib.mkOption {
+        type = lib.types.str;
+        default = "127.0.0.1";
+        description = "Address to listen on; a deployment sets the tailnet address. A wildcard fails evaluation.";
+      };
+
+      port = lib.mkOption {
+        type = lib.types.port;
+        default = 9494;
+        description = "Quack port.";
+      };
+
+      tokenFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        example = "/run/secrets/timeline-quack-token";
+        description = ''
+          File holding the token (at least four characters). It reaches the process as a
+          systemd credential and never the Nix store or the command line. Plain HTTP:
+          the listener is for the tailnet, which encrypts the hop.
+        '';
+      };
+    };
+
     memoryMax = lib.mkOption {
       type = lib.types.str;
       default = "3G";
@@ -215,6 +247,14 @@ in
         assertion = cfg.port != publicCfg.port || !publicCfg.enable;
         message = "services.timeline-private.port clashes with services.timeline.port.";
       }
+      {
+        assertion = !cfg.quack.enable || cfg.quack.tokenFile != null;
+        message = "services.timeline-private.quack.enable needs quack.tokenFile.";
+      }
+      {
+        assertion = !(lib.elem cfg.quack.address [ "0.0.0.0" "::" "[::]" "" ]);
+        message = "services.timeline-private.quack.address must be one interface, not a wildcard.";
+      }
     ];
 
     services.duckweb.enable = true;
@@ -223,6 +263,10 @@ in
       extensions = [
         duckwebPkgs.duckweb.extensionFile
         "${site.sqlite-scanner}/sqlite_scanner.duckdb_extension"
+      ]
+      ++ lib.optionals cfg.quack.enable [
+        "${site.httpfs}/httpfs.duckdb_extension"
+        "${site.quack}/quack.duckdb_extension"
       ];
       setup = [
         "SET memory_limit = ${sqlStr cfg.memoryLimit}"
@@ -236,10 +280,21 @@ in
         ".read ${site.app}/views-garmin.sql"
         ".read ${site.app}/views-chat.sql"
         ".read ${site.app}/views-air.sql"
+        ".read ${site.app}/views-garmin-raw.sql"
         ".read ${site.app}/lanes-private.sql"
         ".read ${site.app}/instance-private.sql"
         ".read ${site.app}/core.sql"
+        ".read ${site.app}/embed.sql"
         ".read ${site.app}/routes-private.sql"
+      ]
+      ++ lib.optionals cfg.quack.enable [
+        # quack_serve prints the token it was given; the journal is not for that.
+        "SET VARIABLE quack_token = (SELECT trim(content, chr(10) || chr(13) || ' ') FROM read_text('/run/credentials/duckweb-timeline-private.service/quack-token'))"
+        ".output /dev/null"
+        "CALL quack_serve(${sqlStr "quack:${cfg.quack.address}:${toString cfg.quack.port}"}, token = getvariable('quack_token'), allow_other_hostname = true, disable_ssl = true)"
+        ".output"
+      ]
+      ++ [
         # Last, as in the public instance: the SQL box reaches every catalog
         # above and nothing outside them.
         "SET enable_external_access = false"
@@ -259,6 +314,7 @@ in
       unitConfig.StartLimitIntervalSec = 0;
       serviceConfig = (import ./nix/hardening.nix) // {
         StateDirectory = "timeline-private-web";
+        LoadCredential = lib.mkIf cfg.quack.enable "quack-token:${toString cfg.quack.tokenFile}";
         CPUQuota = cfg.cpuQuota;
         SupplementaryGroups = cfg.garmin.groups ++ cfg.chat.groups ++ cfg.purifier.groups;
         ExecStartPre = "${lib.getExe waitForSources} ${lib.escapeShellArgs (lib.attrValues (lib.removeAttrs sources [ "garmin" ]))}";

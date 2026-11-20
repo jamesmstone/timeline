@@ -58,10 +58,10 @@ in
     sources = lib.mkOption {
       type = lib.types.attrsOf lib.types.path;
       default = {
-        lastfm = "/var/lib/datasette-sites/lastfm/music.db";
-        reading = "/var/lib/datasette-sites/api-read/readingList.db";
-        parkrun = "/var/lib/datasette-sites/parkrun/parkruns.db";
-        chess = "/var/lib/datasette-sites/chess/chess.db";
+        lastfm = "/var/lib/dbs/lastfm/music.db";
+        reading = "/var/lib/dbs/api-read/readingList.db";
+        parkrun = "/var/lib/dbs/parkrun/parkruns.db";
+        chess = "/var/lib/dbs/chess/chess.db";
       };
       description = ''
         SQLite files attached read-only, by catalog name. These names are what

@@ -85,6 +85,37 @@ let
     '';
   };
 
+  # One source's SQLite file as a DuckDB file the browser can attach by range
+  # request. Copy-then-rename, so a reader never sees a half-written file.
+  timelineExport = writeShellApplication {
+    name = "timeline-export";
+    runtimeInputs = [
+      coreutils
+      duckdb
+    ];
+    text = ''
+      usage="usage: timeline-export <in.sqlite> <out.duckdb>"
+      in=''${1:?$usage}
+      out=''${2:?$usage}
+      tmp="$out.tmp"
+      rm -f "$tmp" "$tmp.wal"
+
+      duckdb -unsigned -bail -noheader -list \
+        -cmd "LOAD '${sqliteScanner}/sqlite_scanner.duckdb_extension'" \
+        -cmd "ATTACH '$in' AS src (TYPE sqlite, READ_ONLY)" \
+        -cmd "ATTACH '$tmp' AS dst" \
+        -cmd "COPY FROM DATABASE src TO dst" \
+        -cmd "CHECKPOINT dst" \
+        -cmd "SELECT 1 WHERE false"
+      if [ -e "$tmp.wal" ]; then
+        echo "$tmp.wal survived CHECKPOINT; the export is not self-contained" >&2
+        exit 1
+      fi
+      chmod 0644 "$tmp"
+      mv -f "$tmp" "$out"
+    '';
+  };
+
   emptyGarmin = runCommand "timeline-garmin-empty.sqlite" { nativeBuildInputs = [ duckdb ]; } ''
     cd ${appSrc}/app
     duckdb -unsigned -noheader -list \
@@ -95,7 +126,7 @@ let
   '';
 in
 {
-  inherit garminPublic purifierSnapshot emptyGarmin;
+  inherit garminPublic purifierSnapshot emptyGarmin timelineExport;
 
   # Served under /_duckweb/ by duckweb itself: the stylesheet, its fonts and
   # the pan script. The design library's fonts are referenced as ../fonts/, so

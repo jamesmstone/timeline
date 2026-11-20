@@ -62,6 +62,23 @@
             } > $out/sqlite_scanner.duckdb_extension
           '';
 
+          # Quack serves the private instance's catalogs to other DuckDBs, and
+          # needs httpfs loaded beside it. Both ship as downloads, like the
+          # scanner, and carry the same entrypoint-from-filename constraint.
+          fetchExtension =
+            name: hash:
+            pkgs.runCommand name { } ''
+              mkdir -p $out
+              ${pkgs.gzip}/bin/gunzip -c ${
+                pkgs.fetchurl {
+                  url = "http://extensions.duckdb.org/v2.0.0/linux_amd64/${name}.duckdb_extension.gz";
+                  inherit hash;
+                }
+              } > $out/${name}.duckdb_extension
+            '';
+          quack = fetchExtension "quack" "sha256-+aXA0uDu8PdUarpFeauA110WfN9IgwRZ+vZzeKsgAP4=";
+          httpfs = fetchExtension "httpfs" "sha256-7mx9fmCl2htva/YVa0KYtV3c4ElqW/5ii9arbUfrjj4=";
+
           built = pkgs.callPackage ./nix/site.nix {
             duckdb = duckweb.duckdbStatic;
             inherit sqliteScanner;
@@ -70,10 +87,12 @@
         in
         {
           sqlite-scanner = sqliteScanner;
+          inherit quack httpfs;
           inherit (built) assets app;
           garmin-public = built.garminPublic;
           garmin-empty = built.emptyGarmin;
           purifier-snapshot = built.purifierSnapshot;
+          timeline-export = built.timelineExport;
         };
     in
     {
@@ -98,6 +117,7 @@
               self = inputs.self;
               duckweb = inputs.duckweb;
             })
+            (import ./export-module.nix { self = inputs.self; })
             (import ./private-module.nix {
               self = inputs.self;
               duckweb = inputs.duckweb;
