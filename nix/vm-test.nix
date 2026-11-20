@@ -40,7 +40,7 @@ pkgs.testers.runNixOSTest {
       ];
 
       virtualisation.graphics = false;
-      virtualisation.memorySize = 2048;
+      virtualisation.memorySize = 4096;
       # Stands in for the edge's /data: range requests over plain files.
       services.caddy = {
         enable = true;
@@ -48,6 +48,9 @@ pkgs.testers.runNixOSTest {
           handle_path /data/* {
             root * /var/lib/timeline-export
             file_server
+          }
+          handle {
+            reverse_proxy 127.0.0.1:8791
           }
         '';
       };
@@ -256,7 +259,7 @@ pkgs.testers.runNixOSTest {
             assert want in page, want
         # The client header changes nothing on the server: it only ever answers documents.
         assert "<!doctype html>" in machine.succeed("curl -sS -H 'X-Duckweb-Client: 1' http://127.0.0.1:8791/sql")
-        for asset in ["client.js", "duckweb.duckdb_extension.wasm", "duckdb-base.wasm"]:
+        for asset in ["client.js", "duckweb.duckdb_extension.wasm", "httpfs.duckdb_extension.wasm", "duckdb-base.wasm"]:
             assert status(machine, "/_duckweb/" + asset) == "200", asset
 
     with subtest("the browser's path runs the SQL over the exported files"):
