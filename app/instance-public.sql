@@ -11,10 +11,6 @@ CREATE OR REPLACE MACRO site_nav(here) AS (
 CREATE OR REPLACE MACRO home_intro() AS
   'Music, reading, parkrun, chess and the daily shape of sleep, heart rate and steps.';
 
-CREATE OR REPLACE MACRO home_sources() AS
-  'Sources: Last.fm scrobbles, the reading list, parkrun results, chess games and daily Garmin '
-  || 'aggregates (sleep, heart-rate and step rollups; no location data).';
-
 CREATE OR REPLACE MACRO sql_intro() AS
   'Read-only access to the public tables, as DuckDB SQL: <code>lanes</code>, <code>lane_points</code>, '
   || '<code>lastfm.*</code>, <code>reading.*</code>, <code>parkrun.*</code>, <code>chess.*</code> and the sanitised '

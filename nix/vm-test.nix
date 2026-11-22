@@ -124,8 +124,10 @@ pkgs.testers.runNixOSTest {
     };
 
   testScript = ''
+    import html
     import json
     import re
+    import urllib.parse
 
     def get(node, path, *flags, port=8791):
         return node.succeed(f"curl -sS {' '.join(flags)} 'http://127.0.0.1:{port}{path}'")
@@ -215,6 +217,30 @@ pkgs.testers.runNixOSTest {
     with subtest("the SQL box answers a SELECT and is capped"):
         assert rows(machine, "select count(*) n from lastfm.listens") == [{"n": 601}]
         assert len(rows(machine, "select * from range(100000)")) == 500
+
+    with subtest("the home page carries no sources line"):
+        for port in [8791, 8792]:
+            assert "Sources:" not in get(machine, "/", port=port)
+
+    with subtest("every example query runs, and a chart arrives as an image"):
+        for port, groups in [(8791, 5), (8792, 6)]:
+            page = get(machine, "/sql", port=port)
+            assert "data-examples" in page and "svg_chart" in page, page[:500]
+            examples = rows(machine, "select gn, title, sql from examples order by gn, ord", port)
+            assert {e["gn"] for e in examples} == set(range(1, groups + 1)), (port, examples)
+            for e in examples:
+                path = "/sql?q=" + urllib.parse.quote(html.unescape(e["sql"]), safe="")
+                body = get(machine, path, port=port)
+                assert status(machine, path, port=port) == "200", (port, e["title"], body[:600])
+                assert "<svg" not in body.split("<pre data-result>", 1)[1].split("</pre>", 1)[0], (e["title"], body[:600])
+                if "svg_chart" in e["sql"]:
+                    assert 'src="data:image/svg+xml;base64,' in body, (e["title"], body[:600])
+        assert "Chat and air" not in get(machine, "/sql") and "Chat and air" in get(machine, "/sql", port=8792)
+
+    with subtest("a chart in a result cannot script the page"):
+        evil = "select '<svg xmlns=\"http://www.w3.org/2000/svg\"><title>t\"><script>alert(1)</script></title></svg>' as c"
+        body = sql(machine, evil)
+        assert "<script" not in body and "alert(1)" not in body.split("<pre data-result>", 1)[1].split("</pre>", 1)[0], body[:800]
 
     with subtest("the SQL box cannot write, read files, attach or reconfigure"):
         for q in [

@@ -1,7 +1,7 @@
 -- The lane timeline and the routes both instances share. Each instance reads
 -- lane_points, lane_items, lane_scale and lanes from its own lanes-*.sql, and
 -- defines the macros named below in instance-*.sql:
---   site_nav(here), home_intro(), home_sources(), sql_intro(), known(), render()
+--   site_nav(here), home_intro(), sql_intro(), known(), render()
 
 CREATE OR REPLACE TABLE tick_units AS SELECT * FROM (VALUES
   (3600,      's', 3600,    'hm'),
@@ -164,10 +164,43 @@ CREATE OR REPLACE MACRO timeline_page(vstart, span) AS (
   || lanes_svg(vstart - span, vstart + 2 * span, span, vstart, 1200)
   || lane_labels() || '</div>'
   || '<p data-range aria-live=polite></p></section>'
-  || '<p><small>' || home_sources() || '</small></p>'
   || '</main><script src="/_duckweb/timeline.js" defer></script></body></html>');
 
 CREATE OR REPLACE MACRO sql_row_cap() AS 500;
+
+-- Charts are drawn for this many rows; each one is a data URI in the response.
+CREATE OR REPLACE MACRO sql_chart_cap() AS 24;
+
+-- A result value that is a whole <svg> document, such as svg_chart returns, is
+-- shown as a picture. It is only ever the source of an <img>, whose content the
+-- browser does not run, so a query cannot use it to script the page.
+CREATE OR REPLACE MACRO chart_img(v) AS (
+  CASE WHEN regexp_matches(v, '^\s*<svg[\s>]') AND regexp_matches(v, '</svg>\s*$')
+       THEN '<img data-chart alt="' || duckweb_escape(coalesce(nullif(
+              replace(replace(replace(regexp_extract(v, '<title[^>]*>([^<]*)</title>', 1), '&amp;', '&'), '&lt;', '<'), '&gt;', '>'),
+              ''), 'Chart')) || '" src="data:image/svg+xml;base64,' || to_base64(encode(v)) || '">'
+       ELSE '' END);
+
+-- The result row as a line of JSON, with each chart named rather than spelled
+-- out, followed by the pictures it holds.
+CREATE OR REPLACE MACRO result_line(j, n) AS (
+  duckweb_escape(regexp_replace(j::VARCHAR, '"<svg(?:\\.|[^"\\])*"', '"[chart]"', 'g')) || chr(10)
+  || CASE WHEN n <= sql_chart_cap()
+          THEN coalesce((SELECT string_agg(chart_img(e.value->>'$'), '') FROM json_each(j) e), '') ELSE '' END);
+
+CREATE OR REPLACE MACRO examples_html(q) AS (
+  '<section data-examples aria-labelledby=sql-examples><h2 id=sql-examples>Example queries</h2>'
+  || '<p>Choose one to load it into the box above and run it. A column holding what <code>svg_chart</code> returns is drawn as a chart, for the first '
+  || sql_chart_cap() || ' rows.</p>'
+  || (SELECT string_agg(g.html, '' ORDER BY g.gn) FROM (
+        SELECT e.gn,
+               '<div role=group aria-labelledby=sql-ex-' || e.gn || '><h3 id=sql-ex-' || e.gn || '>' || duckweb_escape(any_value(e.grp)) || '</h3><ul>'
+               || string_agg('<li><form method=get action=/sql><input type=hidden name=q value="' || duckweb_escape(e.sql) || '">'
+                             || '<button type=submit' || CASE WHEN e.sql = replace(coalesce(q, ''), chr(13), '') THEN ' aria-current=true' ELSE '' END || '>'
+                             || duckweb_escape(e.title) || '</button> <small>' || duckweb_escape(e.descr) || '</small></form></li>', '' ORDER BY e.ord)
+               || '</ul></div>' AS html
+        FROM examples e GROUP BY e.gn) g)
+  || '</section>');
 
 CREATE OR REPLACE MACRO sql_page(q) AS (
   doc_open('timeline SQL') || site_nav('/sql')
@@ -225,12 +258,15 @@ CREATE OR REPLACE MACRO route_sql(method, route) AS TABLE (
               FROM duckweb_match(route, '/sql') WHERE method = 'GET'
   UNION ALL SELECT duckweb_chunk('<pre data-result>')
               FROM duckweb_match(route, '/sql') WHERE method = 'GET' AND duckweb_query(route, 'q') <> ''
-  UNION ALL SELECT duckweb_chunk(duckweb_escape(to_json(t)::VARCHAR) || chr(10))
+  UNION ALL SELECT duckweb_chunk(result_line(t.j, t.n))
               FROM duckweb_match(route, '/sql'),
-                   (SELECT * FROM query(sql_text(route)) LIMIT sql_row_cap()) t
+                   (SELECT to_json(r) AS j, row_number() OVER () AS n
+                      FROM (SELECT * FROM query(sql_text(route)) LIMIT sql_row_cap()) r) t
               WHERE method = 'GET' AND duckweb_query(route, 'q') <> ''
   UNION ALL SELECT duckweb_chunk('</pre>')
               FROM duckweb_match(route, '/sql') WHERE method = 'GET' AND duckweb_query(route, 'q') <> ''
+  UNION ALL SELECT duckweb_chunk(examples_html(duckweb_query(route, 'q')))
+              FROM duckweb_match(route, '/sql') WHERE method = 'GET'
   UNION ALL SELECT duckweb_chunk('</main></body></html>')
               FROM duckweb_match(route, '/sql') WHERE method = 'GET'
   UNION ALL SELECT duckweb_end() FROM duckweb_match(route, '/sql') WHERE method = 'GET'
