@@ -28,7 +28,7 @@ reading list, parkrun, chess, and sanitised Garmin rollups. `/` is the lane
 timeline: the server draws an SVG three viewports wide and the page script pans
 it by moving the viewBox, fetching a fresh window from `/lanes.svg` near an edge.
 Without script the page is the same drawing at a fixed range, navigable by the
-zoom links. `/sql` runs one read-only `SELECT` per request.
+zoom links. `/sql` runs one read-only `SELECT` per request and offers example queries with charts.
 
 `nixosModules.default` does not import duckweb's NixOS module; the instances set
 `services.duckweb`, so the consuming configuration must import
