@@ -262,6 +262,7 @@ in
       inherit (cfg) address port memoryMax;
       extensions = [
         duckwebPkgs.duckweb.extensionFile
+        duckwebPkgs.svg-charts.extensionFile
         "${site.sqlite-scanner}/sqlite_scanner.duckdb_extension"
       ]
       ++ lib.optionals cfg.quack.enable [
@@ -282,6 +283,8 @@ in
         ".read ${site.app}/views-air.sql"
         ".read ${site.app}/views-garmin-raw.sql"
         ".read ${site.app}/lanes-private.sql"
+        ".read ${site.app}/examples-public.sql"
+        ".read ${site.app}/examples-private.sql"
         ".read ${site.app}/instance-private.sql"
         ".read ${site.app}/core.sql"
         ".read ${site.app}/embed.sql"

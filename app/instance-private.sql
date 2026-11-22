@@ -14,10 +14,6 @@ CREATE OR REPLACE MACRO site_nav(here) AS (
 CREATE OR REPLACE MACRO home_intro() AS
   'Music, reading, parkrun, chess, sleep, heart rate and steps, with message volume and air quality.';
 
-CREATE OR REPLACE MACRO home_sources() AS
-  'Sources: the public ones plus Garmin rollups, chat message counts by network, and the purifier''s '
-  || 'PM2.5. Full Garmin, chat bodies and the archive are reachable through the SQL box only.';
-
 CREATE OR REPLACE MACRO sql_intro() AS
   'Read-only access to every source, as DuckDB SQL: the public tables (<code>lastfm.*</code>, <code>reading.*</code>, '
   || '<code>parkrun.*</code>, <code>chess.*</code>), the Garmin rollups <code>garmin.*</code> and the full snapshots '

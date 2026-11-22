@@ -131,6 +131,7 @@ in
       inherit (cfg) address port memoryMax;
       extensions = [
         duckwebPkgs.duckweb.extensionFile
+        duckwebPkgs.svg-charts.extensionFile
         "${site.sqlite-scanner}/sqlite_scanner.duckdb_extension"
       ];
       setup = [
@@ -144,6 +145,7 @@ in
         ".read ${site.app}/views-shared.sql"
         ".read ${site.app}/views-garmin.sql"
         ".read ${site.app}/lanes-public.sql"
+        ".read ${site.app}/examples-public.sql"
         ".read ${site.app}/instance-public.sql"
         ".read ${site.app}/core.sql"
         ".read ${site.app}/routes-public.sql"

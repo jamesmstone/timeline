@@ -42,3 +42,9 @@
 [data-range] { margin: var(--space-2) 0 0; color: var(--fg-muted); font-size: var(--text-sm); }
 
 pre[data-result] { overflow-x: auto; }
+
+img[data-chart] { display: block; max-width: 100%; height: auto; margin-block: var(--space-2); background: var(--c-white); border-radius: var(--radius); }
+
+[data-examples] ul { list-style: none; padding: 0; margin: 0 0 var(--space-4); }
+[data-examples] li { margin: 0 0 var(--space-2); }
+[data-examples] form { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); align-items: baseline; margin: 0; }
