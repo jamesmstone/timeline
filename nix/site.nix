@@ -100,11 +100,22 @@ let
       tmp="$out.tmp"
       rm -f "$tmp" "$tmp.wal"
 
+      load="LOAD '${sqliteScanner}/sqlite_scanner.duckdb_extension'"
+      attach="ATTACH '$in' AS src (TYPE sqlite, READ_ONLY)"
+
+      # COPY FROM DATABASE replays the SQLite index DDL through DuckDB's
+      # parser, which rejects the [bracket] quoting some scrapers emit.
+      script=$(mktemp)
+      trap 'rm -f "$script"' EXIT
       duckdb -unsigned -bail -noheader -list \
-        -cmd "LOAD '${sqliteScanner}/sqlite_scanner.duckdb_extension'" \
-        -cmd "ATTACH '$in' AS src (TYPE sqlite, READ_ONLY)" \
+        -cmd "$load" -cmd "$attach" \
+        -c "SELECT format('CREATE TABLE dst.main.\"{}\" AS FROM src.main.\"{}\";', q, q) FROM (SELECT replace(table_name, '\"', '\"\"') AS q FROM duckdb_tables() WHERE database_name = 'src' ORDER BY table_name)" \
+        > "$script"
+
+      duckdb -unsigned -bail -noheader -list \
+        -cmd "$load" -cmd "$attach" \
         -cmd "ATTACH '$tmp' AS dst" \
-        -cmd "COPY FROM DATABASE src TO dst" \
+        -cmd ".read $script" \
         -cmd "CHECKPOINT dst" \
         -cmd "SELECT 1 WHERE false"
       if [ -e "$tmp.wal" ]; then
