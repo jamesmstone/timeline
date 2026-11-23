@@ -30,11 +30,11 @@
         "urbanist": "urbanist"
       },
       "locked": {
-        "lastModified": 1794667157,
-        "narHash": "sha256-vsDRlLshNgt6SXdzK5QKhtB1zxcXIcSbvs1r2wUHz84=",
+        "lastModified": 1794825516,
+        "narHash": "sha256-8H0CujPak30/ShvUQ6g8VgOrQR/tp0Eg5kgglmNZxq4=",
         "ref": "refs/heads/main",
-        "rev": "4f2b3c251a721583799f4ac5fbc60189a8313e3b",
-        "revCount": 81,
+        "rev": "701c3b9317a663ce89c6f9c6b27cbc0d47bcdd9a",
+        "revCount": 83,
         "type": "git",
         "url": "ssh://forgejo@hermanii/james/design"
       },
@@ -51,11 +51,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1794655292,
-        "narHash": "sha256-w2zSU64qiWz6KB07W18Iy3/ZhGnBquVXZDim9rpF/L0=",
+        "lastModified": 1795196415,
+        "narHash": "sha256-ToI5CxsViuRzLIsKfFw8lZVS8Kp0g6iCPzxEsNgMrtI=",
         "ref": "refs/heads/main",
-        "rev": "68919e09662354a84f45deb44d8e50f964a70d64",
-        "revCount": 75,
+        "rev": "dde2b9e4102905eb1797f0891a33b70d3b5e3142",
+        "revCount": 110,
         "type": "git",
         "url": "ssh://forgejo@hermanii/james/duckweb"
       },
@@ -164,11 +164,11 @@
     },
     "nixpkgs_3": {
       "locked": {
-        "lastModified": 1794537146,
-        "narHash": "sha256-Wpz/7x/YWnDIBu7yj6ixe8j6fIMsidd9Y+o1PqPF3iM=",
+        "lastModified": 1795234589,
+        "narHash": "sha256-f/VVvxf5RsQgWVhUtefoca5ktVg0DA2bnkMOcmSnozo=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "d5cc6833999746cffdfe0598f7bc801a57b887a9",
+        "rev": "2786a2a72088ecf32aea5b3ec52099e6a7cff78f",
         "type": "github"
       },
       "original": {
