@@ -393,9 +393,10 @@ pkgs.testers.runNixOSTest {
         assert "GPS-CANARY" not in svg and "CHAT-BODY-CANARY" not in svg
         headers = machine.succeed("curl -sS -D - -o /dev/null 'http://127.0.0.1:8792/embed.svg?end=now&duration=1w'")
         assert "image/svg+xml" in headers and "access-control-allow-origin: *" in headers.lower(), headers
-        assert "height=520" in svg and "No Birth" not in svg
+        assert 'height="520"' in svg and "No Birth" not in svg
         tall = get(machine, "/embed.svg?start=2026-01-04T00:00:00Z&end=2026-01-19T00:00:00Z&width=1000&height=700", port=8792)
-        assert "height=700" in tall and 'viewBox="0.00 0 1000 700"' in tall, tall[:400]
+        ET.fromstring(tall)
+        assert 'height="700"' in tall and 'viewBox="0.00 0 1000 700"' in tall, tall[:400]
         for bad in ["start=x", "duration=1y", "duration=10m", "start=2026-01-02T00:00:00Z&end=2026-01-01T00:00:00Z", "width=abc", "height=abc"]:
             assert status(machine, "/embed.svg?" + bad, port=8792) == "400", bad
 
