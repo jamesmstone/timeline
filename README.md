@@ -2,6 +2,17 @@
 
 Duckweb pages over the scraped SQLite databases, as two instances on hermanii.
 
+## Private homepage
+
+On the private instance `/` is a sideways strip of `/embed.svg` tiles, newest at the right,
+with no script. Each tile is an `<img loading=lazy>`, so the browser fetches it as it nears the
+viewport. Older time is a lazy `<iframe>` at the left: the same page, one `more` shorter, which
+loads once you scroll to it and brings its own tiles and older frame. The innermost page ends in
+an "Earlier" link that reopens the view further back. Zoom links set the time a tile spans.
+Parameters: `end` (default now), `step` (`Nh`/`Nd`/`Nw`, default 1w), `count` tiles a page
+(26), `more` older pages (8, at most 20), `w` and `h` a tile. The draggable lanes page is at
+`/?view=lanes`.
+
 ## Embedding
 
 `/embed.svg` on the private instance is the lane timeline as a self-contained

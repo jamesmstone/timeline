@@ -432,6 +432,32 @@ pkgs.testers.runNixOSTest {
         for bad in ["start=x", "duration=1y", "duration=10m", "start=2026-01-02T00:00:00Z&end=2026-01-01T00:00:00Z", "width=abc", "height=abc"]:
             assert status(machine, "/embed.svg?" + bad, port=8792) == "400", bad
 
+    with subtest("the private homepage is a strip of lazy tiles with an older page in a lazy frame"):
+        page = get(machine, "/?view=scroll&end=2026-01-19T00:00:00Z&step=1w&count=3&more=2&w=400&h=300", port=8792)
+        tiles = re.findall(r'<img loading=lazy [^>]*src="(/embed\.svg\?[^"]+)"', page)
+        assert len(tiles) == 3, tiles
+        assert html.unescape(tiles[-1]) == "/embed.svg?start=2026-01-12T00:00:00Z&end=2026-01-19T00:00:00Z&width=400&height=300", tiles
+        assert 'width=3760 height=300' in page, page[:600]  # (2 more + 1) pages of 3 tiles of 400, and the 160 wide Earlier link
+        frames = re.findall(r'<iframe loading=lazy [^>]*src="([^"]+)"', page)
+        assert [html.unescape(f) for f in frames] == ["/?view=scroll&frame=1&end=2025-12-29T00:00:00Z&step=1w&count=3&more=1&m0=2&w=400&h=300"], frames
+        for t in tiles:
+            ET.fromstring(get(machine, html.unescape(t), port=8792))
+        dflt = get(machine, "/?view=scroll&end=2026-01-19T00:00:00Z&count=2&more=0", port=8792)
+        assert "start=2026-01-05T00:00:00Z&amp;end=2026-01-12T00:00:00Z" in dflt, dflt[-500:]  # a week a tile unless told otherwise
+        zooms = re.findall(r'<a href="/\?view=scroll&amp;step=(\d+h)', dflt)
+        assert zooms == ["24h", "168h", "720h", "8760h", "43800h"], zooms
+        assert 'aria-current=true>1 week a tile' in dflt and "Scroll sideways" not in dflt
+        far = get(machine, "/?view=scroll&end=2026-01-19T00:00:00Z&step=720h&count=2&more=0", port=8792)
+        assert "start=2025-11-20T00:00:00Z&amp;end=2025-12-20T00:00:00Z" in far, far[-500:]
+        assert 'width=2560 height=300' in get(machine, frames[0].replace("&amp;", "&"), port=8792)  # the frame is as wide as the room its parent gave it
+        last = get(machine, "/?view=scroll&frame=1&end=2025-12-29T00:00:00Z&count=3&more=0&m0=2", port=8792)
+        link = re.search(r'<a target=_top href="([^"]+)"', last)
+        assert link and html.unescape(link.group(1)) == "/?view=scroll&end=2025-12-08T00:00:00Z&step=1w&count=3&more=2&w=400&h=520", last[-900:]
+        assert "<iframe" not in last and last.count("<img loading=lazy") == 3 and "site-nav" not in last and "data-site" not in last
+        assert "scroll-strip" in get(machine, "/", port=8792) and "scroll-strip" in get(machine, "/?view=scroll", port=8792)
+        assert 'data-timeline-svg' in get(machine, "/?view=lanes", port=8792) and "scroll-strip" not in get(machine, "/?span=345600&at=1767960000", port=8792)
+        assert "scroll-strip" not in get(machine, "/?view=scroll")
+
     with subtest("the pages do not draw the raw lanes, and the public instance has no embed"):
         svg = get(machine, "/lanes.svg?${fortnight}&w=1000", port=8792)
         assert "data-lane=hr " not in svg and "data-lane=stress" not in svg, sorted(set(re.findall(r"data-lane=\w+", svg)))

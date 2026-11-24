@@ -91,3 +91,89 @@ CREATE OR REPLACE MACRO route_embed(method, route) AS TABLE (
               WHERE method = 'GET' AND NOT p['bad']
   UNION ALL SELECT duckweb_end() FROM duckweb_match(route, '/embed.svg') WHERE method = 'GET'
 );
+
+-- The private homepage, also at `/?view=scroll`: an endless-feeling strip of /embed.svg tiles, newest at the
+-- right, with no script. One <svg> holds a <foreignObject><img loading=lazy> per tile, so the
+-- browser fetches a tile only as it nears the viewport (an SVG <image> has no loading attribute
+-- and is fetched at once). Older time is a lazy <iframe> at the left that is this same page,
+-- one `more` shorter: it loads when scrolled to, and brings its own tiles and its own older
+-- frame. Zoom links set `step`, the time one tile spans. Params: end (default now), step (Nh/Nd/Nw, default 1w), count tiles per page,
+-- more older pages, w and h per tile.
+-- This is the private instance's homepage. The draggable lanes page stays at /?view=lanes, and
+-- at the span and at links it has always had.
+CREATE OR REPLACE MACRO home_scroll(route) AS (
+  coalesce(duckweb_query(route, 'view'), '') = 'scroll'
+  OR (coalesce(duckweb_query(route, 'view'), '') <> 'lanes'
+      AND coalesce(duckweb_query(route, 'span'), '') = '' AND coalesce(duckweb_query(route, 'at'), '') = ''));
+
+CREATE OR REPLACE MACRO scroll_iso(e) AS (strftime(make_timestamp(e::BIGINT * 1000000), '%Y-%m-%dT%H:%M:%SZ'));
+
+CREATE OR REPLACE MACRO scroll_params(route) AS (
+  SELECT {
+    'e': coalesce(embed_time(nullif(duckweb_query(route, 'end'), '')), (epoch(now())::BIGINT // 3600) * 3600),
+    'sraw': CASE WHEN embed_duration(nullif(duckweb_query(route, 'step'), '')) BETWEEN 3600 AND 157680000
+                 THEN duckweb_query(route, 'step') ELSE '1w' END,
+    'step': least(157680000, greatest(3600, coalesce(embed_duration(nullif(duckweb_query(route, 'step'), '')), 604800))),
+    'count': num_param(route, 'count', 26, 1, 104), 'more': num_param(route, 'more', 8, 0, 20), 'm0': num_param(route, 'm0', num_param(route, 'more', 8, 0, 20), 0, 20),
+    'w': embed_size(nullif(duckweb_query(route, 'w'), ''), 400), 'h': embed_size(nullif(duckweb_query(route, 'h'), ''), 520),
+    'given': nullif(duckweb_query(route, 'end'), '') IS NOT NULL, 'frame': duckweb_query(route, 'frame') = '1' });
+
+-- The innermost page (more = 0) starts with an "Earlier" link instead of a frame. It opens the
+-- same view ending where the strip does, with all the pages again, so the strip can go on.
+-- off is where this page's own tiles start: after its older frame, or after the link.
+CREATE OR REPLACE MACRO scroll_cap() AS 160;
+
+CREATE OR REPLACE MACRO scroll_total(more, pw) AS
+  ((more + 1) * pw + scroll_cap());
+
+CREATE OR REPLACE MACRO scroll_strip(p) AS (
+  WITH g AS (SELECT p['e'] AS e, p['step'] AS step, p['count'] AS n, p['more'] AS more, p['m0'] AS m0,
+                    p['w'] AS tw, p['h'] AS h, p['sraw'] AS sraw),
+       dims AS (SELECT g.*, n * tw AS pw FROM g),
+       lay AS (SELECT dims.*, scroll_total(more, pw) AS total,
+                      CASE WHEN more = 0 THEN scroll_cap() ELSE scroll_total(more - 1, pw) END AS off FROM dims)
+  SELECT '<svg class=scroll-strip role=img aria-label="Timeline, older to the left" width=' || total || ' height=' || h
+      || ' viewBox="0 0 ' || total || ' ' || h || '">'
+      || CASE WHEN more > 0
+           THEN '<foreignObject x=0 y=0 width=' || off || ' height=' || h || '><iframe loading=lazy title="Earlier" width='
+                || off || ' height=' || h || ' src="/?view=scroll&amp;frame=1&amp;end=' || scroll_iso(e - n * step)
+                || '&amp;step=' || sraw || '&amp;count=' || n || '&amp;more=' || more - 1 || '&amp;m0=' || m0
+                || '&amp;w=' || tw || '&amp;h=' || h || '"></iframe></foreignObject>'
+           ELSE '<a target=_top href="/?view=scroll&amp;end=' || scroll_iso(e - n * step) || '&amp;step=' || sraw
+                || '&amp;count=' || n || '&amp;more=' || m0 || '&amp;w=' || tw || '&amp;h=' || h
+                || '"><rect class=scroll-earlier x=0 y=0 width=' || scroll_cap() || ' height=' || h
+                || ' fill="#e4e9f1"/><text x=' || scroll_cap() // 2 || ' y=' || h // 2
+                || ' text-anchor=middle fill="#1f2937" font-size=16>← Earlier</text></a>' END
+      || (SELECT string_agg('<foreignObject x=' || (off + i * tw) || ' y=0 width=' || tw || ' height=' || h
+            || '><img loading=lazy decoding=async alt="' || scroll_iso(e - (n - i) * step) || '" width=' || tw || ' height=' || h
+            || ' src="/embed.svg?start=' || scroll_iso(e - (n - i) * step) || '&amp;end=' || scroll_iso(e - (n - i - 1) * step)
+            || '&amp;width=' || tw || '&amp;height=' || h || '"></foreignObject>', '' ORDER BY i)
+          FROM range(n) r(i))
+      || '</svg>'
+  FROM lay);
+
+CREATE OR REPLACE MACRO scroll_page(p) AS (
+  CASE WHEN p['frame']
+    THEN '<!doctype html><html lang=en><head><meta charset=utf-8><title>Earlier</title>'
+         || '<style>html,body{margin:0;overflow:hidden}svg,iframe{display:block;border:0}svg{outline:1px dashed #8b98ab;outline-offset:-1px}</style></head><body>'
+         || scroll_strip(p) || '</body></html>'
+    ELSE doc_open('timeline') || site_nav('/')
+         || '<main id=main-content class=container tabindex=-1><h1>Timeline</h1>'
+         || '<nav aria-label="Zoom" data-zoom-nav><ul>'
+         || (SELECT string_agg('<li><a href="/?view=scroll&amp;step=' || (z.secs // 3600) || 'h'
+               || CASE WHEN p['given'] THEN '&amp;end=' || scroll_iso(p['e']) ELSE '' END || '"'
+               || CASE WHEN z.secs = p['step'] THEN ' aria-current=true' ELSE '' END || '>' || z.label || ' a tile</a></li>', '' ORDER BY z.ord)
+             FROM zooms z)
+         || '</ul></nav>'
+         || '<style>.scroll-track{overflow-x:auto;direction:rtl;border:1px solid #d3dae5}.scroll-strip{display:block;direction:ltr;max-width:none}'
+         || '.scroll-strip iframe{border:0}</style>'
+         || '<div class=scroll-track tabindex=0 role=region aria-label="Timeline strip">' || scroll_strip(p) || '</div>'
+         || '</main></body></html>' END);
+
+CREATE OR REPLACE MACRO route_home_scroll(method, route) AS TABLE (
+            SELECT duckweb_head(200, 'text/html; charset=utf-8', duckweb_header('Cache-Control', 'public, max-age=300'))
+              FROM duckweb_match(route, '/') WHERE method = 'GET' AND home_scroll(route)
+  UNION ALL SELECT duckweb_chunk(scroll_page(scroll_params(route)))
+              FROM duckweb_match(route, '/') WHERE method = 'GET' AND home_scroll(route)
+  UNION ALL SELECT duckweb_end() FROM duckweb_match(route, '/') WHERE method = 'GET' AND home_scroll(route)
+);
