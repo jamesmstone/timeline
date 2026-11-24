@@ -437,9 +437,9 @@ pkgs.testers.runNixOSTest {
         tiles = re.findall(r'<img loading=lazy [^>]*src="(/embed\.svg\?[^"]+)"', page)
         assert len(tiles) == 3, tiles
         assert html.unescape(tiles[-1]) == "/embed.svg?start=2026-01-12T00:00:00Z&end=2026-01-19T00:00:00Z&width=400&height=300", tiles
-        assert 'width=3600 height=300' in page, page[:600]  # (2 more + 1) pages of 3 tiles of 400
+        assert 'width=3760 height=300' in page, page[:600]  # (2 more + 1) pages of 3 tiles of 400, and the 160 wide Earlier link
         frames = re.findall(r'<iframe loading=lazy [^>]*src="([^"]+)"', page)
-        assert [html.unescape(f) for f in frames] == ["/?view=scroll&frame=1&end=2025-12-29T00:00:00Z&step=1w&count=3&more=1&w=400&h=300"], frames
+        assert [html.unescape(f) for f in frames] == ["/?view=scroll&frame=1&end=2025-12-29T00:00:00Z&step=1w&count=3&more=1&m0=2&w=400&h=300"], frames
         for t in tiles:
             ET.fromstring(get(machine, html.unescape(t), port=8792))
         dflt = get(machine, "/?view=scroll&end=2026-01-19T00:00:00Z&count=2&more=0", port=8792)
@@ -449,7 +449,10 @@ pkgs.testers.runNixOSTest {
         assert 'aria-current=true>1 week a tile' in dflt and "Scroll sideways" not in dflt
         far = get(machine, "/?view=scroll&end=2026-01-19T00:00:00Z&step=720h&count=2&more=0", port=8792)
         assert "start=2025-11-20T00:00:00Z&amp;end=2025-12-20T00:00:00Z" in far, far[-500:]
-        last = get(machine, "/?view=scroll&frame=1&end=2025-12-29T00:00:00Z&count=3&more=0", port=8792)
+        assert 'width=2560 height=300' in get(machine, frames[0].replace("&amp;", "&"), port=8792)  # the frame is as wide as the room its parent gave it
+        last = get(machine, "/?view=scroll&frame=1&end=2025-12-29T00:00:00Z&count=3&more=0&m0=2", port=8792)
+        link = re.search(r'<a target=_top href="([^"]+)"', last)
+        assert link and html.unescape(link.group(1)) == "/?view=scroll&end=2025-12-08T00:00:00Z&step=1w&count=3&more=2&w=400&h=520", last[-900:]
         assert "<iframe" not in last and last.count("<img loading=lazy") == 3 and "site-nav" not in last and "data-site" not in last
         assert 'data-timeline-svg' in get(machine, "/", port=8792)
         assert "scroll-strip" not in get(machine, "/?view=scroll")
