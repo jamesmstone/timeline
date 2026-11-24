@@ -6,7 +6,7 @@ Duckweb pages over the scraped SQLite databases, as two instances on hermanii.
 
 `/embed.svg` on the private instance is the lane timeline as a self-contained
 image, for other sites to embed with `<img>`: heart rate and stress samples,
-sleep, steps, music and reading.
+sleep, steps, music, family and reading.
 
 | Parameter  | Meaning                                                                  |
 | ---------- | ------------------------------------------------------------------------ |
@@ -15,6 +15,7 @@ sleep, steps, music and reading.
 | `duration` | `24h`, `30d`, `1w`. Used when only one of `start` and `end` is given.    |
 | `width`    | Pixels, 200 to 2400. Defaults to 1200.                                   |
 | `maxWidth` | Caps `width`; `600px` and `600` both work.                               |
+| `height`   | Pixels, 200 to 2400. Defaults to 520; stretches the lanes, not the text. |
 
 `start` and `end` together win; with one, `duration` (default a week) fills in
 the other; with neither, the week ending now. A range runs from an hour to five
@@ -28,7 +29,9 @@ reading list, parkrun, chess, and sanitised Garmin rollups. `/` is the lane
 timeline: the server draws an SVG three viewports wide and the page script pans
 it by moving the viewBox, fetching a fresh window from `/lanes.svg` near an edge.
 Without script the page is the same drawing at a fixed range, navigable by the
-zoom links. `/sql` runs one read-only `SELECT` per request and offers example queries with charts.
+zoom links. `/sql` is a page shell: the server runs none of the visitor's SQL.
+The page boots duckweb's browser worker, which attaches the exports (below) by
+range request and renders the same routes there, with example queries and charts.
 
 `nixosModules.default` does not import duckweb's NixOS module; the instances set
 `services.duckweb`, so the consuming configuration must import
@@ -53,7 +56,7 @@ Synapse's database), optionally the chat `archive`, and `purifier`. It runs as
 its own unit with its own state, looser caps, and the supplementary groups its
 files need.
 
-Two more lanes, chat volume and PM2.5, join the public ones. `/chat` shows
+Four more lanes join the public ones: chat volume, PM2.5, family and, drawn only by `/embed.svg`, raw heart rate and stress. `/chat` shows
 message counts by network and never a body; bodies are reachable through
 `/chat/search?q=` (a plain substring of at least three characters, the newest
 50 matches) and the SQL box (`chat_messages`). The public instance has neither
@@ -85,7 +88,11 @@ access off), and the public instance has no Quack listener.
 
 ## Exports
 
-`services.timeline-export` copies each public source's SQLite file into
-`<outDirectory>/<source>.duckdb` for a web server to serve as static files. It
-refuses raw Garmin, chat, archive and purifier sources; Garmin goes out as the
-sanitised rollups only.
+`services.timeline-export` writes `<outDirectory>/v/<hash>/` with one `.duckdb` per
+public source (`lastfm`, `reading`, `parkrun`, `chess`, `garmin`) and `app.duckdb`, the
+page's macros built against them, then `version` naming the newest. Serve
+`outDirectory` as `/data` with range requests. Each page reads `version` first, so
+macros and tables always come from one export; three versions are kept. A source
+that is not readable yet keeps its file from the previous export. It refuses raw
+Garmin, chat, archive and purifier sources; Garmin goes out as the sanitised
+rollups only.

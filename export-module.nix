@@ -1,6 +1,5 @@
-# Per-source DuckDB exports of the public sources, for the static site: each
-# source's SQLite file is copied into its own .duckdb file under outDir, which
-# a web server serves as plain files and the browser attaches by range request.
+# Per-source DuckDB exports of the public sources, for the browser's worker: a web
+# server serves outDirectory as plain files and the worker attaches them by range request.
 # Closed over the flake's own outputs like site-module.nix.
 { self }:
 {
@@ -18,10 +17,6 @@ let
   forbidden = name: lib.hasPrefix "garmin_" name || lib.elem name [ "chat" "archive" "purifier" ];
   rawGarmin = path: lib.hasInfix "james_garmin" (toString path);
 
-  exportOne = name: path: ''
-    ${lib.getExe site.timeline-export} ${lib.escapeShellArg (toString path)} ${lib.escapeShellArg "${cfg.outDirectory}/${name}.duckdb"} \
-      || { echo "export of ${name} failed" >&2; failed=1; }
-  '';
 in
 {
   options.services.timeline-export = {
@@ -37,7 +32,7 @@ in
         garmin = "/var/lib/timeline/garmin-public.sqlite";
       };
       description = ''
-        SQLite files to export, by name: each becomes <outDirectory>/<name>.duckdb.
+        SQLite files to export, by name: each becomes <outDirectory>/v/<hash>/<name>.duckdb.
         Only public sources belong here. `garmin` must be the sanitised rollups
         from services.timeline.garmin, never the raw snapshots.
       '';
@@ -46,7 +41,10 @@ in
     outDirectory = lib.mkOption {
       type = lib.types.path;
       default = "/var/lib/timeline-export";
-      description = "Where the exports land, world-readable, for a web server to serve as static files.";
+      description = ''
+        Where the exports land, world-readable, for a web server to serve as /data: `version`
+        names the newest of the `v/<hash>/` directories, each with every source and app.duckdb.
+      '';
     };
 
     schedule = lib.mkOption {
@@ -58,6 +56,10 @@ in
 
   config = lib.mkIf cfg.enable {
     assertions = [
+      {
+        assertion = lib.sort lib.lessThan (lib.attrNames cfg.sources) == [ "chess" "garmin" "lastfm" "parkrun" "reading" ];
+        message = "services.timeline-export.sources must be exactly the five the page's macros read: chess, garmin, lastfm, parkrun, reading.";
+      }
       {
         assertion = lib.all (n: !forbidden n) (lib.attrNames cfg.sources);
         message = "services.timeline-export.sources: raw Garmin, chat, archive and purifier are private and never exported.";
@@ -90,22 +92,9 @@ in
         ProtectHome = true;
         ReadWritePaths = [ cfg.outDirectory ];
       };
-      # A source that has not been scraped yet is skipped, not a failure of the rest.
-      script = ''
-        failed=0
-        ${lib.concatStringsSep "\n" (
-          lib.mapAttrsToList (
-            name: path: ''
-              if [ -r ${lib.escapeShellArg (toString path)} ]; then
-                ${exportOne name path}
-              else
-                echo "${name}: ${toString path} not readable yet, skipped" >&2
-              fi
-            ''
-          ) cfg.sources
-        )}
-        exit $failed
-      '';
+      script = "${lib.getExe site.timeline-export} ${lib.escapeShellArg cfg.outDirectory} ${
+        lib.escapeShellArgs (lib.mapAttrsToList (name: path: "${name}=${toString path}") cfg.sources)
+      }";
     };
 
     systemd.timers.timeline-export = {

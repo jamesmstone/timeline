@@ -13,17 +13,18 @@ CREATE OR REPLACE TABLE lanes AS SELECT * FROM (VALUES
   ('chat',    8, 'Chat',       'events'),
   ('air',     9, 'Air (PM2.5)', 'level'),
   ('hr',     10, 'Heart rate (samples)', 'level'),
-  ('stress', 11, 'Stress', 'level')
+  ('stress', 11, 'Stress', 'level'),
+  ('family', 12, 'Family', 'events')
 ) t(id, ord, label, kind);
 
 CREATE OR REPLACE VIEW lane_points AS
   SELECT * FROM shared_points UNION ALL SELECT * FROM garmin_points
   UNION ALL SELECT * FROM chat_points UNION ALL SELECT * FROM air_points
-  UNION ALL SELECT * FROM garmin_raw_points;
+  UNION ALL SELECT * FROM garmin_raw_points UNION ALL SELECT * FROM family_points;
 CREATE OR REPLACE VIEW lane_items AS
   SELECT * FROM shared_items UNION ALL SELECT * FROM garmin_items
   UNION ALL SELECT * FROM chat_items UNION ALL SELECT * FROM air_items
-  UNION ALL SELECT * FROM garmin_raw_items;
+  UNION ALL SELECT * FROM garmin_raw_items UNION ALL SELECT * FROM family_items;
 
 -- The lanes the pages draw. hr and stress read the raw Garmin samples, which
 -- are millions of rows, so only /embed.svg asks for them.

@@ -147,8 +147,10 @@ in
         ".read ${site.app}/lanes-public.sql"
         ".read ${site.app}/examples-public.sql"
         ".read ${site.app}/instance-public.sql"
+        ".read ${site.app}/client-config.sql"
         ".read ${site.app}/core.sql"
         ".read ${site.app}/routes-public.sql"
+        "CREATE OR REPLACE MACRO is_server() AS (true)"
         # Last, so everything above could still read files. duckweb_serve runs
         # after setup and sets preserve_insertion_order itself, which a locked
         # configuration refuses, so the lock is not taken; the SQL box only ever

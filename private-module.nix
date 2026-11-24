@@ -39,6 +39,7 @@ let
       garmin_monitoring = "${cfg.garmin.directory}/james_garmin_monitoring.db";
       chat = cfg.chat.snapshot;
       purifier = cfg.purifier.snapshot;
+      family = cfg.family.snapshot;
     }
     // lib.optionalAttrs (cfg.chat.archive != null) { archive = cfg.chat.archive; };
 
@@ -154,6 +155,26 @@ in
         type = lib.types.listOf lib.types.str;
         default = [ ];
         description = "Supplementary groups the server needs to read the chat files.";
+      };
+    };
+
+    family = {
+      url = lib.mkOption {
+        type = lib.types.str;
+        default = "https://family.jamesst.one/individualsAPI.json";
+        description = "The family tree's individuals feed; file:// works for a fixture.";
+      };
+
+      snapshot = lib.mkOption {
+        type = lib.types.path;
+        default = "/var/lib/timeline-family/family.sqlite";
+        description = "SQLite snapshot of the tree, refreshed by timeline-family-snapshot.";
+      };
+
+      schedule = lib.mkOption {
+        type = lib.types.str;
+        default = "hourly";
+        description = "OnCalendar expression for refreshing the snapshot.";
       };
     };
 
@@ -282,6 +303,7 @@ in
         ".read ${site.app}/views-chat.sql"
         ".read ${site.app}/views-air.sql"
         ".read ${site.app}/views-garmin-raw.sql"
+        ".read ${site.app}/views-family.sql"
         ".read ${site.app}/lanes-private.sql"
         ".read ${site.app}/examples-public.sql"
         ".read ${site.app}/examples-private.sql"
@@ -309,8 +331,8 @@ in
     };
 
     systemd.services.duckweb-timeline-private = {
-      wants = [ "timeline-private-garmin.service" ];
-      after = [ "timeline-private-garmin.service" ];
+      wants = [ "timeline-private-garmin.service" "timeline-family.service" ];
+      after = [ "timeline-private-garmin.service" "timeline-family.service" ];
       # The snapshots arrive from other units, and Garmin's rewrites its
       # directory in place, so a missing file is a wait, not a failure of the
       # configuration. Without this the unit would burn its start limit.
@@ -324,6 +346,35 @@ in
         RestartSec = 30;
       };
     };
+
+    systemd.services.timeline-family = {
+      description = "timeline: snapshot the family tree";
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = "${lib.getExe site.family-snapshot} ${lib.escapeShellArg cfg.family.url} ${cfg.family.snapshot}";
+        User = "timeline-family";
+        Group = "timeline-family";
+        StateDirectory = "timeline-family";
+        StateDirectoryMode = "0755";
+        UMask = "0022";
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+      };
+    };
+    systemd.timers.timeline-family = {
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnCalendar = cfg.family.schedule;
+        Persistent = true;
+      };
+    };
+    users.users.timeline-family = {
+      isSystemUser = true;
+      group = "timeline-family";
+    };
+    users.groups.timeline-family = { };
 
     systemd.services.timeline-private-garmin = rollup.service;
     users.users.timeline-private-garmin = rollup.user;
