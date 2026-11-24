@@ -85,6 +85,7 @@
             designCss = inputs.design.packages.${system}.css;
             duckwebExtension = "${duckweb.duckweb}/v${duckweb.duckdbStatic.version}/linux_amd64/duckweb.duckdb_extension";
             duckwebWasm = "${duckweb.duckweb-wasm}/v${duckweb.duckdbStatic.version}/wasm_eh/duckweb.duckdb_extension.wasm";
+            svgChartsWasm = "${duckweb.svg-charts-wasm}/v${duckweb.duckdbStatic.version}/wasm_eh/svg_charts.duckdb_extension.wasm";
             duckwebAssets = duckweb.duckweb-assets;
             duckwebClient = "${inputs.duckweb}/duckweb/client";
             duckdbVersion = "v${duckweb.duckdbStatic.version}";

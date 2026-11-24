@@ -140,8 +140,10 @@ pkgs.testers.runNixOSTest {
     };
 
   testScript = ''
+    import html
     import json
     import re
+    import urllib.parse
 
     def get(node, path, *flags, port=8791):
         return node.succeed(f"curl -sS {' '.join(flags)} 'http://127.0.0.1:{port}{path}'")
@@ -152,7 +154,7 @@ pkgs.testers.runNixOSTest {
         ).strip()
 
     def enc(q):
-        return q.replace(" ", "+").replace("'", "%27").replace(";", "%3B")
+        return urllib.parse.quote(q, safe="")
 
     def sql(node, q, port=8791):
         return get(node, "/sql?q=" + enc(q), port=port)
@@ -168,7 +170,7 @@ pkgs.testers.runNixOSTest {
         # What the page's worker does, natively: attach the exports over HTTP and render the route.
         ver = machine.succeed("cat /var/lib/timeline-export/version").strip()
         base = f"http://127.0.0.1:8099/data/v/{ver}"
-        stmts = ["LOAD '${site.httpfs}/httpfs.duckdb_extension'", "LOAD '${duckweb.duckweb.extensionFile}'"]
+        stmts = ["LOAD '${site.httpfs}/httpfs.duckdb_extension'", "LOAD '${duckweb.duckweb.extensionFile}'", "LOAD '${duckweb.svg-charts.extensionFile}'"]
         stmts += [f"ATTACH '{base}/{n}.duckdb' AS {n} (READ_ONLY)" for n in ["lastfm", "reading", "parkrun", "chess", "garmin"]]
         stmts += [f"ATTACH '{base}/app.duckdb' AS app (READ_ONLY)", "SET search_path='memory.main,app.main'"]
         sel = "SELECT string_agg(chunk, substr('x', 1, 0)) FROM render('GET', '/sql?q=" + enc(q) + "', " + header + ", substr('x', 1, 0)) AS r(chunk)"
@@ -253,11 +255,11 @@ pkgs.testers.runNixOSTest {
             assert "<pre data-result>" not in body and "root:" not in body, (q, body)
         machine.fail("test -e /tmp/pwned.csv")
         page = get(machine, "/sql")
-        for want in ["id=duckweb-root", "window.__duckweb=", '"hydrate":true', "/_duckweb/client.js", "/data/v/%VERSION%/app.duckdb"]:
+        for want in ["id=duckweb-root", "window.__duckweb=", '"hydrate":true', "/_duckweb/client.js", "/_duckweb/svg_charts.duckdb_extension.wasm", "/data/v/%VERSION%/app.duckdb"]:
             assert want in page, want
         # The client header changes nothing on the server: it only ever answers documents.
         assert "<!doctype html>" in machine.succeed("curl -sS -H 'X-Duckweb-Client: 1' http://127.0.0.1:8791/sql")
-        for asset in ["client.js", "duckweb.duckdb_extension.wasm", "httpfs.duckdb_extension.wasm", "duckdb-base.wasm"]:
+        for asset in ["client.js", "duckweb.duckdb_extension.wasm", "svg_charts.duckdb_extension.wasm", "httpfs.duckdb_extension.wasm", "duckdb-base.wasm"]:
             assert status(machine, "/_duckweb/" + asset) == "200", asset
 
     with subtest("the browser's path runs the SQL over the exported files"):
@@ -272,6 +274,36 @@ pkgs.testers.runNixOSTest {
         assert "<!doctype html>" in document and "window.__duckweb=" in document
         for q in ["insert into lastfm.listens values (1, 1, 'x', 'x', null)", "create table app.t as select 1", "select 1; select 2"]:
             machine.fail(client(q))
+
+    with subtest("every example query runs, and a chart arrives as an image"):
+        def check_example(e, body):
+            assert "<pre data-result>" in body, (e["title"], body[:600])
+            assert "<svg" not in body.split("<pre data-result>", 1)[1].split("</pre>", 1)[0], (e["title"], body[:600])
+            if "svg_chart" in e["sql"]:
+                assert 'src="data:image/svg+xml;base64,' in body, (e["title"], body[:600])
+
+        # The public page is a shell that still lists the examples; its worker runs them over the exports.
+        for port, groups in [(8791, 5), (8792, 6)]:
+            page = get(machine, "/sql", port=port)
+            assert "data-examples" in page and "svg_chart" in page, page[:500]
+            assert ("Chat and air" in page) == (port == 8792), port
+        examples = crows("select gn, title, sql from examples order by gn, ord")
+        assert {e["gn"] for e in examples} == set(range(1, 6)), examples
+        for e in examples:
+            check_example(e, machine.succeed(client(html.unescape(e["sql"]))))
+        # The private instance runs its own SQL on the server, so its examples go through the route directly.
+        private = rows(machine, "select gn, title, sql from examples order by gn, ord", 8792)
+        assert {e["gn"] for e in private} == set(range(1, 7)), private
+        for e in private:
+            path = "/sql?q=" + enc(html.unescape(e["sql"]))
+            assert status(machine, path, port=8792) == "200", (e["title"], path)
+            check_example(e, get(machine, path, port=8792))
+
+    with subtest("a chart in a result cannot script the page"):
+        evil = "select '<svg xmlns=\"http://www.w3.org/2000/svg\"><title>t\"><script>alert(1)</script></title></svg>' as c"
+        for body in [machine.succeed(client(evil)), sql(machine, evil, 8792)]:
+            result = body.split("<pre data-result>", 1)[1].split("</pre>", 1)[0]
+            assert "<script" not in body and "alert(1)" not in result, body[:800]
 
     with subtest("resource caps are in place on the unit"):
         show = machine.succeed("systemctl show duckweb-timeline.service -p MemoryMax -p CPUQuotaPerSecUSec")

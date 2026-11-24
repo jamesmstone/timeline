@@ -10,6 +10,7 @@
   curl,
   duckwebExtension,
   duckwebWasm,
+  svgChartsWasm,
   duckwebAssets,
   duckwebClient,
   duckdbVersion,
@@ -191,7 +192,7 @@ let
   # What the browser's worker loads: the exports attach by range request from
   # the version directory the page read first, so macros and tables always match.
   clientConfig = builtins.toJSON {
-    extensions = [ "/_duckweb/httpfs.duckdb_extension.wasm" "/_duckweb/duckweb.duckdb_extension.wasm" ];
+    extensions = [ "/_duckweb/httpfs.duckdb_extension.wasm" "/_duckweb/duckweb.duckdb_extension.wasm" "/_duckweb/svg_charts.duckdb_extension.wasm" ];
     app = "/data/v/%VERSION%/app.duckdb";
     version = "/data/version";
     setup = map (n: "ATTACH '%ORIGIN%/data/v/%VERSION%/${n}.duckdb' AS ${n} (READ_ONLY)") sources;
@@ -317,6 +318,7 @@ in
     cp ${duckwebClient}/client.js ${duckwebClient}/host.js $out/
     cp ${duckwebAssets}/duckdb-blocking.js ${duckwebAssets}/duckdb-base.wasm ${duckwebAssets}/httpfs.duckdb_extension.wasm $out/
     cp ${duckwebWasm} $out/duckweb.duckdb_extension.wasm
+    cp ${svgChartsWasm} $out/svg_charts.duckdb_extension.wasm
   '';
 
   app = runCommand "timeline-app" { } ''
