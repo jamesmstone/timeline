@@ -373,11 +373,14 @@ pkgs.testers.runNixOSTest {
     with subtest("/embed.svg draws the raw heart rate and stress lanes next to the others"):
         svg = get(machine, "/embed.svg?start=2026-01-04T00:00:00Z&end=2026-01-19T00:00:00Z&width=1000", port=8792)
         assert svg.startswith("<svg") and "<style>" in svg, svg[:300]
-        assert 'width=1000' in svg
+        # An <img> only draws well-formed XML, which the pages' HTML attributes are not.
+        import xml.etree.ElementTree as ET
+        root = ET.fromstring(svg)
+        assert root.tag == "{http://www.w3.org/2000/svg}svg" and root.get("width") == "1000", svg[:300]
         for lane in ["hr", "stress", "sleep", "steps", "music", "read"]:
-            assert f"data-lane={lane}" in svg, lane
+            assert f'data-lane="{lane}"' in svg, lane
         assert "77 bpm" in svg and "stress 41" in svg
-        assert "data-lane=chat" not in svg and "data-lane=air" not in svg
+        assert 'data-lane="chat"' not in svg and 'data-lane="air"' not in svg
         assert "GPS-CANARY" not in svg and "CHAT-BODY-CANARY" not in svg
         headers = machine.succeed("curl -sS -D - -o /dev/null 'http://127.0.0.1:8792/embed.svg?end=now&duration=1w'")
         assert "image/svg+xml" in headers and "access-control-allow-origin: *" in headers.lower(), headers
