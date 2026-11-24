@@ -92,14 +92,19 @@ CREATE OR REPLACE MACRO route_embed(method, route) AS TABLE (
   UNION ALL SELECT duckweb_end() FROM duckweb_match(route, '/embed.svg') WHERE method = 'GET'
 );
 
--- Homepage view `/?view=scroll`: an endless-feeling strip of /embed.svg tiles, newest at the
+-- The private homepage, also at `/?view=scroll`: an endless-feeling strip of /embed.svg tiles, newest at the
 -- right, with no script. One <svg> holds a <foreignObject><img loading=lazy> per tile, so the
 -- browser fetches a tile only as it nears the viewport (an SVG <image> has no loading attribute
 -- and is fetched at once). Older time is a lazy <iframe> at the left that is this same page,
 -- one `more` shorter: it loads when scrolled to, and brings its own tiles and its own older
 -- frame. Zoom links set `step`, the time one tile spans. Params: end (default now), step (Nh/Nd/Nw, default 1w), count tiles per page,
 -- more older pages, w and h per tile.
-CREATE OR REPLACE MACRO home_scroll(route) AS (duckweb_query(route, 'view') = 'scroll');
+-- This is the private instance's homepage. The draggable lanes page stays at /?view=lanes, and
+-- at the span and at links it has always had.
+CREATE OR REPLACE MACRO home_scroll(route) AS (
+  coalesce(duckweb_query(route, 'view'), '') = 'scroll'
+  OR (coalesce(duckweb_query(route, 'view'), '') <> 'lanes'
+      AND coalesce(duckweb_query(route, 'span'), '') = '' AND coalesce(duckweb_query(route, 'at'), '') = ''));
 
 CREATE OR REPLACE MACRO scroll_iso(e) AS (strftime(make_timestamp(e::BIGINT * 1000000), '%Y-%m-%dT%H:%M:%SZ'));
 

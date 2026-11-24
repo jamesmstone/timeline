@@ -432,7 +432,7 @@ pkgs.testers.runNixOSTest {
         for bad in ["start=x", "duration=1y", "duration=10m", "start=2026-01-02T00:00:00Z&end=2026-01-01T00:00:00Z", "width=abc", "height=abc"]:
             assert status(machine, "/embed.svg?" + bad, port=8792) == "400", bad
 
-    with subtest("/?view=scroll is a strip of lazy tiles with an older page in a lazy frame"):
+    with subtest("the private homepage is a strip of lazy tiles with an older page in a lazy frame"):
         page = get(machine, "/?view=scroll&end=2026-01-19T00:00:00Z&step=1w&count=3&more=2&w=400&h=300", port=8792)
         tiles = re.findall(r'<img loading=lazy [^>]*src="(/embed\.svg\?[^"]+)"', page)
         assert len(tiles) == 3, tiles
@@ -454,7 +454,8 @@ pkgs.testers.runNixOSTest {
         link = re.search(r'<a target=_top href="([^"]+)"', last)
         assert link and html.unescape(link.group(1)) == "/?view=scroll&end=2025-12-08T00:00:00Z&step=1w&count=3&more=2&w=400&h=520", last[-900:]
         assert "<iframe" not in last and last.count("<img loading=lazy") == 3 and "site-nav" not in last and "data-site" not in last
-        assert 'data-timeline-svg' in get(machine, "/", port=8792)
+        assert "scroll-strip" in get(machine, "/", port=8792) and "scroll-strip" in get(machine, "/?view=scroll", port=8792)
+        assert 'data-timeline-svg' in get(machine, "/?view=lanes", port=8792) and "scroll-strip" not in get(machine, "/?span=345600&at=1767960000", port=8792)
         assert "scroll-strip" not in get(machine, "/?view=scroll")
 
     with subtest("the pages do not draw the raw lanes, and the public instance has no embed"):
