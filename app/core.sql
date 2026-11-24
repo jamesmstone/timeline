@@ -228,9 +228,13 @@ CREATE OR REPLACE MACRO sql_page(headers, q) AS (
 
 -- The routes both instances serve. An instance's render() unions these with
 -- its own and ends with the 404 branch.
+-- The scrolling homepage view needs /embed.svg, so only the instance that has it
+-- (embed.sql, read after this file) turns it on.
+CREATE OR REPLACE MACRO home_scroll(route) AS (false);
+
 CREATE OR REPLACE MACRO route_home(method, route) AS TABLE (
             SELECT duckweb_head(200, 'text/html; charset=utf-8', duckweb_header('Cache-Control', 'public, max-age=300'))
-              FROM duckweb_match(route, '/') WHERE method = 'GET'
+              FROM duckweb_match(route, '/') WHERE method = 'GET' AND NOT home_scroll(route)
   UNION ALL SELECT duckweb_chunk(timeline_page(s.vstart, s.span))
               FROM duckweb_match(route, '/'),
                    LATERAL (SELECT
@@ -241,8 +245,8 @@ CREATE OR REPLACE MACRO route_home(method, route) AS TABLE (
                      CASE WHEN duckweb_query(route, 'span') = 'all'
                           THEN (SELECT min(t0) FROM lane_points) - 43200
                           ELSE num_param(route, 'at', epoch(now())::BIGINT - sp.span * 9 // 10, 0, 4102444800) END AS vstart) s
-              WHERE method = 'GET'
-  UNION ALL SELECT duckweb_end() FROM duckweb_match(route, '/') WHERE method = 'GET'
+              WHERE method = 'GET' AND NOT home_scroll(route)
+  UNION ALL SELECT duckweb_end() FROM duckweb_match(route, '/') WHERE method = 'GET' AND NOT home_scroll(route)
 );
 
 CREATE OR REPLACE MACRO route_lanes(method, route) AS TABLE (
