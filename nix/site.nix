@@ -207,6 +207,7 @@ let
     "${appSrc}/app/views-shared.sql"
     "${appSrc}/app/views-garmin.sql"
     "${appSrc}/app/lanes-public.sql"
+    "${appSrc}/app/examples-public.sql"
     "${appSrc}/app/instance-public.sql"
     "${appSrc}/app/core.sql"
     "${appSrc}/app/routes-public.sql"
