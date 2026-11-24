@@ -444,6 +444,11 @@ pkgs.testers.runNixOSTest {
             ET.fromstring(get(machine, html.unescape(t), port=8792))
         dflt = get(machine, "/?view=scroll&end=2026-01-19T00:00:00Z&count=2&more=0", port=8792)
         assert "start=2026-01-05T00:00:00Z&amp;end=2026-01-12T00:00:00Z" in dflt, dflt[-500:]  # a week a tile unless told otherwise
+        zooms = re.findall(r'<a href="/\?view=scroll&amp;step=(\d+h)', dflt)
+        assert zooms == ["24h", "168h", "720h", "8760h", "43800h"], zooms
+        assert 'aria-current=true>1 week a tile' in dflt and "Scroll sideways" not in dflt
+        far = get(machine, "/?view=scroll&end=2026-01-19T00:00:00Z&step=720h&count=2&more=0", port=8792)
+        assert "start=2025-11-20T00:00:00Z&amp;end=2025-12-20T00:00:00Z" in far, far[-500:]
         last = get(machine, "/?view=scroll&frame=1&end=2025-12-29T00:00:00Z&count=3&more=0", port=8792)
         assert "<iframe" not in last and last.count("<img loading=lazy") == 3 and "site-nav" not in last and "data-site" not in last
         assert 'data-timeline-svg' in get(machine, "/", port=8792)

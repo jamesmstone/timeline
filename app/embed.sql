@@ -97,7 +97,7 @@ CREATE OR REPLACE MACRO route_embed(method, route) AS TABLE (
 -- browser fetches a tile only as it nears the viewport (an SVG <image> has no loading attribute
 -- and is fetched at once). Older time is a lazy <iframe> at the left that is this same page,
 -- one `more` shorter: it loads when scrolled to, and brings its own tiles and its own older
--- frame. Params: end (default now), step (Nh/Nd/Nw, default 1w), count tiles per page,
+-- frame. Zoom links set `step`, the time one tile spans. Params: end (default now), step (Nh/Nd/Nw, default 1w), count tiles per page,
 -- more older pages, w and h per tile.
 CREATE OR REPLACE MACRO home_scroll(route) AS (duckweb_query(route, 'view') = 'scroll');
 
@@ -106,12 +106,12 @@ CREATE OR REPLACE MACRO scroll_iso(e) AS (strftime(make_timestamp(e::BIGINT * 10
 CREATE OR REPLACE MACRO scroll_params(route) AS (
   SELECT {
     'e': coalesce(embed_time(nullif(duckweb_query(route, 'end'), '')), (epoch(now())::BIGINT // 3600) * 3600),
-    'sraw': CASE WHEN embed_duration(nullif(duckweb_query(route, 'step'), '')) BETWEEN 3600 AND 31536000
+    'sraw': CASE WHEN embed_duration(nullif(duckweb_query(route, 'step'), '')) BETWEEN 3600 AND 157680000
                  THEN duckweb_query(route, 'step') ELSE '1w' END,
-    'step': least(31536000, greatest(3600, coalesce(embed_duration(nullif(duckweb_query(route, 'step'), '')), 604800))),
+    'step': least(157680000, greatest(3600, coalesce(embed_duration(nullif(duckweb_query(route, 'step'), '')), 604800))),
     'count': num_param(route, 'count', 26, 1, 104), 'more': num_param(route, 'more', 8, 0, 20),
     'w': embed_size(nullif(duckweb_query(route, 'w'), ''), 400), 'h': embed_size(nullif(duckweb_query(route, 'h'), ''), 520),
-    'frame': duckweb_query(route, 'frame') = '1' });
+    'given': nullif(duckweb_query(route, 'end'), '') IS NOT NULL, 'frame': duckweb_query(route, 'frame') = '1' });
 
 CREATE OR REPLACE MACRO scroll_strip(p) AS (
   WITH g AS (SELECT p['e'] AS e, p['step'] AS step, p['count'] AS n, p['more'] AS more, p['w'] AS tw, p['h'] AS h, p['sraw'] AS sraw),
@@ -135,11 +135,16 @@ CREATE OR REPLACE MACRO scroll_strip(p) AS (
 CREATE OR REPLACE MACRO scroll_page(p) AS (
   CASE WHEN p['frame']
     THEN '<!doctype html><html lang=en><head><meta charset=utf-8><title>Earlier</title>'
-         || '<style>html,body{margin:0;overflow:hidden}svg,iframe{display:block;border:0}</style></head><body>'
+         || '<style>html,body{margin:0;overflow:hidden}svg,iframe{display:block;border:0}svg{outline:1px dashed #8b98ab;outline-offset:-1px}</style></head><body>'
          || scroll_strip(p) || '</body></html>'
     ELSE doc_open('timeline') || site_nav('/')
          || '<main id=main-content class=container tabindex=-1><h1>Timeline</h1>'
-         || '<p>Scroll sideways: newest on the right, older to the left. No script; each week is an image the browser loads when it is near.</p>'
+         || '<nav aria-label="Zoom" data-zoom-nav><ul>'
+         || (SELECT string_agg('<li><a href="/?view=scroll&amp;step=' || (z.secs // 3600) || 'h'
+               || CASE WHEN p['given'] THEN '&amp;end=' || scroll_iso(p['e']) ELSE '' END || '"'
+               || CASE WHEN z.secs = p['step'] THEN ' aria-current=true' ELSE '' END || '>' || z.label || ' a tile</a></li>', '' ORDER BY z.ord)
+             FROM zooms z)
+         || '</ul></nav>'
          || '<style>.scroll-track{overflow-x:auto;direction:rtl;border:1px solid #d3dae5}.scroll-strip{display:block;direction:ltr}'
          || '.scroll-strip iframe{border:0}</style>'
          || '<div class=scroll-track tabindex=0 role=region aria-label="Timeline strip">' || scroll_strip(p) || '</div>'
