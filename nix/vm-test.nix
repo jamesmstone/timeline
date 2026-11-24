@@ -140,10 +140,8 @@ pkgs.testers.runNixOSTest {
     };
 
   testScript = ''
-    import html
     import json
     import re
-    import urllib.parse
 
     def get(node, path, *flags, port=8791):
         return node.succeed(f"curl -sS {' '.join(flags)} 'http://127.0.0.1:{port}{path}'")
