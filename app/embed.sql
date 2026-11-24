@@ -52,15 +52,23 @@ CREATE OR REPLACE MACRO embed_style() AS
   || '[data-lane=hr]{fill:#fb7185}[data-lane=stress]{fill:#fb923c}[data-lane=sleep]{fill:#818cf8}'
   || '[data-lane=steps]{fill:#38bdf8}[data-lane=music]{fill:#c084fc}[data-lane=read]{fill:#2dd4bf}}</style>';
 
+-- lanes_svg_of writes HTML attributes (unquoted values, a bare data-timeline-svg),
+-- which the pages inline but an image/svg+xml document may not: a browser refuses
+-- to draw it as an <img>. Quote them here so only the embed pays for it. A value
+-- that is already quoted starts with a quote and is left alone.
+CREATE OR REPLACE MACRO xml_attrs(svg) AS
+  (regexp_replace(replace(svg, ' data-timeline-svg ', ' data-timeline-svg="" '),
+                  '(\s[\w:-]+)=([^\s"''>]+)', '\1="\2"', 'g'));
+
 CREATE OR REPLACE MACRO embed_svg(f, t, w) AS (
-  SELECT replace(replace(replace(lanes_svg_of(f, t, t - f, f, w, embed_lanes()),
+  SELECT xml_attrs(replace(replace(replace(lanes_svg_of(f, t, t - f, f, w, embed_lanes()),
       '<svg xmlns="http://www.w3.org/2000/svg" ',
       '<svg xmlns="http://www.w3.org/2000/svg" width=' || w || ' height=' || lanes_h(embed_lanes()) || ' '),
     'preserveAspectRatio="xMinYMin slice">', 'preserveAspectRatio="xMinYMin slice">' || embed_style()),
     '</svg>',
     (SELECT string_agg('<text class=name x=6 y=' || (axis_h() + (l.ord - 1) * lane_h() + 16) || '>' || duckweb_escape(l.label) || '</text>', '' ORDER BY l.ord)
        FROM (SELECT id, label, row_number() OVER (ORDER BY list_position(embed_lanes(), id)) AS ord FROM lanes WHERE list_contains(embed_lanes(), id)) l)
-    || '</svg>'));
+    || '</svg>')));
 
 CREATE OR REPLACE MACRO route_embed(method, route) AS TABLE (
             SELECT duckweb_head(400, 'text/plain; charset=utf-8', '')
